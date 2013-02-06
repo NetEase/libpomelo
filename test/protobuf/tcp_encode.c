@@ -4,7 +4,6 @@
 #include <uv.h>
 #include <jansson.h>
 #include "pb.h"
-#include "pb_encode.h"
 
 #define WRITE_REQ_DATA  "Hello, world."
 #define NUM_WRITE_REQS  1
@@ -118,9 +117,9 @@ int main() {
 
     char buffer[512];
     //memset(buffer,0,sizeof(buffer));
-    pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-
-    if(!pb_encode(&stream,protos,msg)){
+    //pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
+    size_t written = 0;
+    if(!pc_pb_encode(buffer,sizeof(buffer),&written,protos,msg)){
         printf("pb_encode error\n");
         return 0;
     }
@@ -130,7 +129,7 @@ int main() {
     int i;
     for (i = 0; i < NUM_WRITE_REQS; i++) {
         write_reqs[i].buf = uv_buf_init(buffer,
-                                        stream.bytes_written);
+                                        written);
     }
     uv_tcp_init(loop, &client);
     //uv_tcp_keepalive(&client,1,1);

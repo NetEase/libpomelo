@@ -1,5 +1,5 @@
-#include "pb_encode.h"
-#include "pb_decode.h"
+#include "pb.h"
+//#include "pb_decode.h"
 #include "jansson.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,17 +25,17 @@ int main(){
 
     uint8_t buffer1[512];
     //memset(buffer,0,sizeof(buffer));
-    pb_ostream_t stream1 = pb_ostream_from_buffer(buffer1, sizeof(buffer1));
-
-    if(!pb_encode(&stream1,protos,msg)){
+    //pb_ostream_t stream1 = pb_ostream_from_buffer(buffer1, sizeof(buffer1));
+    size_t written = 0;
+    if(!pc_pb_encode(buffer1,sizeof(buffer1),&written,protos,msg)){
     	printf("pb_encode error\n");
     	return 0;
     }
 
-    pb_istream_t stream = pb_istream_from_buffer(buffer1, stream1.bytes_written);
+    //pb_istream_t stream = pb_istream_from_buffer(buffer1, stream1.bytes_written);
     
     result = json_object();
-    if(!pb_decode(&stream,protos,result)){
+    if(!pc_pb_decode(buffer1,written,protos,result)){
     	printf("decode error\n");
     	return 0;
     }

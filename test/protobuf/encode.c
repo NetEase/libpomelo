@@ -1,4 +1,4 @@
-#include "pb_encode.h"
+#include "pb.h"
 #include "jansson.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,14 +25,14 @@ int main(){
 
     uint8_t buffer[512];
     //memset(buffer,0,sizeof(buffer));
-    pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
-
-    if(!pb_encode(&stream,protos,msg)){
+    //pb_ostream_t stream = pb_ostream_from_buffer(buffer, sizeof(buffer));
+    size_t written = 0;
+    if(!pc_pb_encode(buffer,sizeof(buffer),&written,protos,msg)){
     	printf("pb_encode error\n");
     	return 0;
     }
 
-    fwrite(buffer, 1, stream.bytes_written, stdout);
+    fwrite(buffer, 1, written, stdout);
     /*int i;
     for(i=0;i<stream.bytes_written;i++){
         printf("%x", buffer[i]);

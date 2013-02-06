@@ -1,7 +1,7 @@
 #ifndef _PB_H_
 #define _PB_H_
 
-/* pb.h: Common parts for pomelo protobuf c library.
+/* pb.h: protobuf api for pomelo c client library.
  */
 
 #define PB_VERSION 0.0.1
@@ -11,44 +11,22 @@
 #include <stdbool.h>
 #include <jansson.h>
 
-/* Handly macro for suppressing unreferenced-parameter compiler warnings.    */
-#ifndef UNUSED
-#define UNUSED(x) (void)(x)
-#endif
+#include "pb_encode.h"
+#include "pb_decode.h"
+#include "pb_util.h"
 
-typedef struct _pb_istream_t pb_istream_t;
-typedef struct _pb_ostream_t pb_ostream_t;
-
-/* Wire types. Library user needs these only in encoder callbacks. */
-typedef enum {
-    PB_uInt32 = 1,
-    PB_int32  = 2,
-    PB_sInt32 = 3,
-    PB_float  = 4,
-    PB_double = 5,
-    PB_string = 6
-} pb_wire_type_t;
-
-int pb__get_type(const char *type);
-int pb__get_constant_type(const char *type);
-
-/* These macros are used for giving out error messages.
- * They are mostly a debugging aid; the main error information
- * is the true/false return value from functions.
- * Some code space can be saved by disabling the error
- * messages if not used.
+/* Encode struct to given output stream.
+ * Returns true on success, false on any failure.
+ * The actual struct pointed to by src_struct must match the description in fields.
+ * All required fields in the struct are assumed to have been filled in.
  */
-#ifdef PB_NO_ERRMSG
-#define PB_RETURN_ERROR(stream,msg) return false
-#define PB_GET_ERROR(stream) "(errmsg disabled)"
-#else
-#define PB_RETURN_ERROR(stream,msg) \
-    do {\
-        if ((stream)->errmsg == NULL) \
-            (stream)->errmsg = (msg); \
-        return false; \
-    } while(0)
-#define PB_GET_ERROR(stream) ((stream)->errmsg ? (stream)->errmsg : "(none)")
-#endif
+ bool pc_pb_encode(uint8_t *buf, size_t len, size_t *written, json_t *protos,
+		json_t *msg);
+
+/* Decode from stream to destination struct.
+ * Returns true on success, false on any failure.
+ * The actual struct pointed to by dest must match the description in fields.
+ */
+ bool pc_pb_decode(uint8_t *buf, size_t len, json_t *protos, json_t *result);
 
 #endif

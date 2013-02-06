@@ -13,6 +13,8 @@
 extern "C" {
 #endif
 
+typedef struct _pb_ostream_t pb_ostream_t;
+
 /* Lightweight output stream.
  * You can provide callback for writing or use pb_ostream_from_buffer.
  * 
@@ -30,29 +32,27 @@ extern "C" {
  * 4) Substreams will modify max_size and bytes_written. Don't use them to
  * calculate any pointers.
  */
-struct _pb_ostream_t
-{
-    bool (*callback)(pb_ostream_t *stream, const uint8_t *buf, size_t count);
-    void *state; /* Free field for use by callback implementation */
-    size_t max_size; /* Limit number of output bytes written (or use SIZE_MAX). */
-    size_t bytes_written;
+struct _pb_ostream_t {
+	bool (*callback)(pb_ostream_t *stream, const uint8_t *buf, size_t count);
+	void *state; /* Free field for use by callback implementation */
+	size_t max_size; /* Limit number of output bytes written (or use SIZE_MAX). */
+	size_t bytes_written;
 };
+
+bool pb_encode(pb_ostream_t *stream, json_t *protos, json_t *msg);
 
 pb_ostream_t pb_ostream_from_buffer(uint8_t *buf, size_t bufsize);
 bool pb_write(pb_ostream_t *stream, const uint8_t *buf, size_t count);
-
-/* Encode struct to given output stream.
- * Returns true on success, false on any failure.
- * The actual struct pointed to by src_struct must match the description in fields.
- * All required fields in the struct are assumed to have been filled in.
- */
-bool pb_encode(pb_ostream_t *stream,  json_t *protos, json_t *msg);
 
 /* --- Helper functions ---
  * You may want to use these from your caller or callbacks.
  */
 
-bool pb_encode_proto(pb_ostream_t *stream, json_t *protos, json_t *proto, json_t *value);
+bool pb_encode_proto(pb_ostream_t *stream, json_t *protos, json_t *proto,
+		json_t *value);
+
+bool pb_encode_array(pb_ostream_t *stream, json_t *protos, json_t *proto,
+		json_t *array);
 /* Encode field header based on LTYPE and field number defined in the field structure.
  * Call this from the callback before writing out field contents. */
 bool pb_encode_tag_for_field(pb_ostream_t *stream, json_t *field);
