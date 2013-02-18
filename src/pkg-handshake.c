@@ -75,10 +75,12 @@ int pc__handshake_resp(pc_client_t *client,
   json_int_t code = json_integer_value(json_object_get(res, "code"));
   if(code != PC_HANDSHAKE_OK) {
     fprintf(stderr, "Handshake fail, code: %d.\n", (int)code);
+    return -1;
   }
 
   json_t *sys = json_object_get(res, "sys");
   if(sys) {
+    // setup heartbeat
     json_int_t hb = json_integer_value(json_object_get(sys, "heartbeat"));
     if(hb < 0) {
       // no need heartbeat
@@ -88,10 +90,17 @@ int pc__handshake_resp(pc_client_t *client,
       client->heartbeat = hb > 0 ? hb : PC_DEFAULT_HEARTBEAT;
       json_int_t to = json_integer_value(json_object_get(sys, "timeout"));
       client->timeout = to > client->heartbeat ? to : PC_DEFAULT_TIMEOUT;
+      uv_timer_set_repeat(&client->heartbeat_timer, client->heartbeat);
+      uv_timer_set_repeat(&client->timeout_timer, client->timeout);
     }
 
-    uv_timer_set_repeat(&client->heartbeat_timer, client->heartbeat);
-    uv_timer_set_repeat(&client->timeout_timer, client->timeout);
+    // setup route dictionary
+    json_t *dics = json_object_get(sys, "dictionary");
+    if(dics) {
+      //TODO: dictionary name?
+      client->route_to_code = NULL;
+      client->code_to_route = NULL;
+    }
   }
 
   json_t *user = json_object_get(res, "user");
@@ -102,11 +111,6 @@ int pc__handshake_resp(pc_client_t *client,
 
   if(!status) {
     pc__handshake_ack(client);
-  }
-
-  if(client->conn_req) {
-    client->conn_req->cb(client->conn_req, 0);
-    client->conn_req = NULL;
   }
 
   return 0;
@@ -166,6 +170,10 @@ static void pc__handshake_ack_cb(uv_write_t* req, int status) {
     pc_disconnect(client);
   } else {
     client->state = PC_ST_WORKING;
+    if(client->conn_req) {
+      client->conn_req->cb(client->conn_req, 0);
+      client->conn_req = NULL;
+    }
   }
 }
 

@@ -29,21 +29,40 @@ int pc_pkg_parser_init(pc_pkg_parser_t *parser, pc_pkg_cb cb, void *attach) {
   parser->head_size = PC_PKG_HEAD_BYTES;
   parser->cb = cb;
   parser->attach = attach;
+  parser->head_offset = 0;
+  parser->pkg_offset = 0;
+  parser->pkg_size = 0;
   parser->state = PC_PKG_HEAD;
 
   return 0;
 }
 
 void pc_pkg_parser_destroy(pc_pkg_parser_t *parser) {
-  if(parser->head_buf) free(parser->head_buf);
-  if(parser->pkg_buf) free(parser->pkg_buf);
+  pc_pkg_parser_close(parser);
   free(parser);
 }
 
-void pc_pkg_parser_reset(pc_pkg_parser_t *parser) {
-  parser->head_offset = 0;
-  if(parser->pkg_buf)
+void pc_pkg_parser_close(pc_pkg_parser_t *parser) {
+  if(PC_PKG_CLOSED == parser->state) {
+    return;
+  }
+
+  parser->state = PC_PKG_CLOSED;
+
+  if(parser->pkg_buf) {
     free(parser->pkg_buf);
+  }
+}
+
+void pc_pkg_parser_reset(pc_pkg_parser_t *parser) {
+  if(PC_PKG_CLOSED == parser->state) {
+    return;
+  }
+
+  parser->head_offset = 0;
+  if(parser->pkg_buf) {
+    free(parser->pkg_buf);
+  }
   parser->pkg_buf = NULL;
   parser->pkg_offset = 0;
   parser->pkg_size = 0;
@@ -66,7 +85,11 @@ int pc_pkg_parser_feed(pc_pkg_parser_t *parser, const char *data, size_t nread) 
     if(offset == -1) {
       return -1;
     }
-    if(parser->state != PC_PKG_HEAD && parser->state != PC_PKG_BODY) {
+    if(parser->state == PC_PKG_CLOSED) {
+      return 0;
+    }
+    if(parser->state != PC_PKG_HEAD && parser->state != PC_PKG_BODY &&
+       parser->state != PC_PKG_CLOSED) {
       fprintf(stderr, "Invalid package parser state: %d\n", parser->state);
       return -1;
     }

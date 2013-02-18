@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <pomelo-client.h>
 #include <pomelo-private/listener.h>
+#include <pomelo-protocol/message.h>
 
 static uv_loop_t *global_uv_loop = NULL;
 
@@ -16,6 +17,7 @@ int pc__heartbeat(pc_client_t *client);
 int pc__heartbeat_req(pc_client_t *client);
 void pc__heartbeat_cb(uv_timer_t* heartbeat_timer, int status);
 void pc__timeout_cb(uv_timer_t* timeout_timer, int status);
+void pc__process_response(pc_client_t *client, pc_msg_t *msg);
 
 int pc_client_init(pc_client_t* client) {
   if(!client) {
@@ -31,6 +33,11 @@ int pc_client_init(pc_client_t* client) {
 
   if(pc_map_init(&client->listeners)) {
     fprintf(stderr, "Fail to init client->listeners.\n");
+    abort();
+  }
+
+  if(pc_map_init(&client->requests)) {
+    fprintf(stderr, "Fail to init client->requests.\n");
     abort();
   }
 
@@ -56,6 +63,36 @@ int pc_client_init(pc_client_t* client) {
   client->state = PC_ST_INITED;
 
   return 0;
+}
+
+void pc__client_destroy(pc_client_t *client) {
+  printf("client destroy~~~~~\n");
+  pc_map_close(&client->listeners);
+  pc_map_close(&client->requests);
+  pc_pkg_parser_close(&client->pkg_parser);
+
+  uv_timer_stop(&client->heartbeat_timer);
+  client->heartbeat = 0;
+  uv_timer_stop(&client->timeout_timer);
+  client->timeout = 0;
+
+  if(client->handshake_opts) {
+    json_decref(client->handshake_opts);
+    client->handshake_opts = NULL;
+  }
+
+  if(client->route_to_code) {
+    json_decref(client->route_to_code);
+    client->route_to_code = NULL;
+  }
+  if(client->code_to_route) {
+    json_decref(client->code_to_route);
+    client->code_to_route = NULL;
+  }
+  if(client->pb_map) {
+    json_decref(client->pb_map);
+    client->pb_map = NULL;
+  }
 }
 
 int pc_add_listener(pc_client_t *client, const char *event,
@@ -132,16 +169,19 @@ void pc_emit_event(pc_client_t *client, const char *event, void *attach) {
 };
 
 int pc_disconnect(pc_client_t *client) {
-  if(client->state == PC_ST_CLOSED) {
+  if(PC_ST_CLOSED == client->state) {
     return 0;
   }
 
   client->state = PC_ST_CLOSED;
 
+  printf("client state set: %d\n", client->state);
+
   pc_emit_event(client, PC_EVENT_DISCONNECT, NULL);
 
   uv_close((uv_handle_t *)&client->socket, NULL);
 
+  pc__client_destroy(client);
   return 0;
 }
 
@@ -184,6 +224,37 @@ static void pc__pkg_cb(pc_pkg_type type, const char *data, size_t len,
   }
 }
 
-int pc__data(pc_client_t *client, const char*data, size_t len) {
+int pc__data(pc_client_t *client, const char *data, size_t len) {
+  pc_msg_t *msg = pc_msg_decode(data, len, client->code_to_route,
+                                client->pb_map);
+  if(msg == NULL) {
+    return -1;
+  }
+
+  if(msg->id > 0) {
+    pc__process_response(client, msg);
+  } else {
+    // server push message
+    pc_emit_event(client, msg->route, msg->msg);
+  }
+
+  pc_msg_destroy(msg);
+
   return 0;
+}
+
+void pc__process_response(pc_client_t *client, pc_msg_t *msg) {
+  char req_id_str[32];
+  memset(req_id_str, 0, 32);
+  sprintf(req_id_str, "%u", msg->id);
+
+  pc_request_t *req = (pc_request_t *)pc_map_get(&client->requests, req_id_str);
+  if(req == NULL) {
+    fprintf(stderr, "Fail to get pc_request_t for request id: %u.\n", msg->id);
+    return;
+  }
+
+  req->cb(req, 0, msg->msg);
+
+  pc_msg_destroy(msg);
 }

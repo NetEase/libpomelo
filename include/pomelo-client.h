@@ -23,6 +23,7 @@ extern "C" {
 #endif
 
 #include <uv.h>
+#include <jansson.h>
 #include <pomelo-private/map.h>
 #include <pomelo-protocol/package.h>
 
@@ -42,11 +43,10 @@ typedef struct pc_connect_s pc_connect_t;
 typedef struct pc_tcp_req_s pc_tcp_req_t;
 typedef struct pc_request_s pc_request_t;
 typedef struct pc_notify_s pc_notify_t;
-typedef struct pc_message_s pc_message_t;
 
 typedef void (*pc_event_cb)(const char *, void *attach);
 typedef void (*pc_connect_cb)(pc_connect_t* req, int status);
-typedef void (*pc_request_cb)(pc_request_t *, int, pc_message_t *);
+typedef void (*pc_request_cb)(pc_request_t *, int, json_t *);
 typedef void (*pc_notify_cb)(pc_notify_t *, int);
 typedef int (*pc_handshake_cb)(pc_client_t *, json_t *);
 typedef void (*pc_handshake_req_cb)(pc_client_t *, pc_connect_t *, int);
@@ -78,7 +78,7 @@ typedef enum {
 #define PC_TCP_REQ_FIELDS                                                     \
   /* public */                                                                \
   const char *route;                                                          \
-  pc_message_t *msg;                                                          \
+  json_t *msg;                                                                \
   void *data;                                                                 \
 
 /**
@@ -105,6 +105,7 @@ struct pc_client_s {
   uv_loop_t *uv_loop;
   uv_tcp_t socket;
   pc_map_t listeners;
+  pc_map_t requests;
   pc_pkg_parser_t pkg_parser;
   int heartbeat;
   int timeout;
@@ -113,6 +114,9 @@ struct pc_client_s {
   json_t *handshake_opts;
   pc_handshake_cb handshake_cb;
   pc_connect_t *conn_req;
+  json_t *route_to_code;
+  json_t *code_to_route;
+  json_t *pb_map;
 };
 
 /**
@@ -135,6 +139,7 @@ struct pc_connect_s {
 struct pc_request_s {
   PC_REQ_FIELDS
   PC_TCP_REQ_FIELDS
+  uint32_t id;
   pc_request_cb cb;
 };
 
@@ -185,11 +190,9 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
  * The route string and message object must keep until the pc_notify_cb invoke.
  *
  * @param  req request instance
- * @param  route route string
- * @param  msg message object
  * @return     0 or -1
  */
-int pc_request_init(pc_request_t *req, const char *route, pc_message_t *msg);
+int pc_request_init(pc_request_t *req);
 
 /**
  * Send rerquest to server.
@@ -199,7 +202,8 @@ int pc_request_init(pc_request_t *req, const char *route, pc_message_t *msg);
  * @param  cb     request callback
  * @return        0 or -1
  */
-int pc_request(pc_client_t *client, pc_request_t *req, pc_request_cb cb);
+int pc_request(pc_client_t *client, pc_request_t *req, const char *route,
+               json_t *msg, pc_request_cb cb);
 
 /**
  * Initiate notify instance.
@@ -221,7 +225,7 @@ int pc_notify_init(pc_notify_t *req);
  * @return        0 or -1
  */
 int pc_notify(pc_client_t *client, pc_notify_t *req, const char *route,
-              pc_message_t *msg, pc_notify_cb cb);
+              json_t *msg, pc_notify_cb cb);
 
 int pc_notify_cleanup(pc_notify_t *req);
 

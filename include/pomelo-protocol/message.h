@@ -47,18 +47,22 @@ struct pc_msg_s {
   json_t *msg;
 };
 
-pc_buf_t pc_message_encode(const char *route, const json_t *msg);
+pc_buf_t pc_msg_encode(uint32_t id, const char *route, const json_t *msg,
+                       json_t *route_dic, const json_t *pb_map);
 
-pc_msg_t *pc_message_decode(const char *data, size_t len);
+pc_msg_t *pc_msg_decode(const char *data, size_t len,
+                        const json_t *code_dic, const json_t *pb_map);
 
-void pc_message_destroy(pc_msg_t *msg);
+void pc_msg_destroy(pc_msg_t *msg);
 
-pc_buf_t pc_json_encode(const char *route, const json_t *msg);
+pc_buf_t pc__json_encode(const json_t *msg);
 
-pc_msg_t *pc_json_decode(const char *data, size_t len);
+json_t *pc__json_decode(const char *data, size_t offset, size_t len);
 
-pc_buf_t pc_pb_encode(const char *route, const json_t *msg);
+pc_buf_t pc__pb_encode(const char *route, const json_t *msg, json_t *pb);
 
-pc_msg_t *pc_pb_decode(const char *data, size_t len);
+json_t *pc__pb_decode(const char *data, size_t offset, size_t len, json_t *pb);
+
+json_t *pc__pb_get(const json_t *pb_map, const char *route);
 
 #endif /* PC_MESSAGE_H */

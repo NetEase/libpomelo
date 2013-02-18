@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <pomelo-client.h>
+#include <assert.h>
+#include <pomelo-protocol/message.h>
+#include <pomelo-private/common.h>
 
 int pc__handshake_req(pc_client_t *client);
 
@@ -10,11 +13,14 @@ static uv_buf_t pc__alloc_buffer(uv_handle_t *handle, size_t suggested_size);
 static void pc__on_tcp_read(uv_stream_t *handle, ssize_t nread, uv_buf_t buf);
 static void pc__on_tcp_connect(uv_connect_t *req, int status);
 static void pc__on_notify(uv_write_t* req, int status);
+static void pc__on_request(uv_write_t *req, int status);
 static int pc__async_write(pc_client_t *client, pc_tcp_req_t *req,
-                           const char *route, pc_message_t *msg);
+                           const char *route, json_t *msg);
 static void pc__async_write_cb(uv_async_t* handle, int status);
 static void pc__notify(pc_notify_t *req, int status);
 static void pc__request(pc_request_t *req, int status);
+
+static uint32_t pc__req_id = 0;
 
 /**
  * Initiate connect request instance.
@@ -74,33 +80,24 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
   return res;
 }
 
-int pc_request_init(pc_request_t *req, const char *route, pc_message_t *msg) {
-  if(!req) {
-    fprintf(stderr, "Invalid request to init.\n");
-    return -1;
-  }
-
+int pc_request_init(pc_request_t *req) {
   memset(req, 0, sizeof(pc_request_t));
   req->type = PC_REQUEST;
-  req->route = route;
-  req->msg = msg;
 
   return 0;
 }
 
-int pc_request(pc_client_t *client, pc_request_t *req, pc_request_cb cb) {
-  return 0;
+int pc_request(pc_client_t *client, pc_request_t *req, const char *route,
+               json_t *msg, pc_request_cb cb) {
+  req->cb = cb;
+  req->id = ++pc__req_id;
+  return pc__async_write(client, (pc_tcp_req_t *)req, route, msg);
 }
 
 /**
  * Initiate notify request instance.
  */
 int pc_notify_init(pc_notify_t *req) {
-  if(!req) {
-    fprintf(stderr, "Invalid notify to init.\n");
-    return -1;
-  }
-
   memset(req, 0, sizeof(pc_notify_t));
   req->type = PC_NOTIFY;
 
@@ -111,9 +108,91 @@ int pc_notify_init(pc_notify_t *req) {
  * Send notify to server.
  */
 int pc_notify(pc_client_t *client, pc_notify_t *req, const char *route,
-               pc_message_t *msg, pc_notify_cb cb) {
+               json_t *msg, pc_notify_cb cb) {
   req->cb = cb;
   return pc__async_write(client, (pc_tcp_req_t *)req, route, msg);
+}
+
+static void pc__request(pc_request_t *req, int status) {
+  if(status == -1) {
+    req->cb(req, status, NULL);
+    return;
+  }
+
+  pc_client_t *client = req->client;
+  // check client state again
+  if(client->state != PC_ST_WORKING) {
+    fprintf(stderr, "Fail to request for Pomelo client not connected.\n");
+    req->cb(req, status, NULL);
+    return;
+  }
+
+  pc_buf_t msg_buf, pkg_buf;
+  uv_write_t * write_req = NULL;
+  void** data = NULL;
+
+  memset(&msg_buf, 0, sizeof(pc_buf_t));
+  memset(&pkg_buf, 0, sizeof(pc_buf_t));
+
+  msg_buf = pc_msg_encode(req->id, req->route, req->msg, client->route_to_code,
+                          client->pb_map);
+
+  if(msg_buf.len == -1) {
+    fprintf(stderr, "Fail to encode request message.\n");
+    goto error;
+  }
+
+  pkg_buf = pc_pkg_encode(PC_PKG_DATA, msg_buf.base, msg_buf.len);
+
+  if(msg_buf.len == -1) {
+    fprintf(stderr, "Fail to encode request package.\n");
+    goto error;
+  }
+
+  write_req = (uv_write_t *)malloc(sizeof(uv_write_t));
+
+  if(write_req == NULL) {
+    goto error;
+  }
+
+  memset(write_req, 0, sizeof(uv_write_t));
+
+  // record request context
+  data = (void **)malloc(sizeof(void *) * 2);
+  if(data == NULL) {
+    fprintf(stderr, "Fail to malloc void** for pc__request.\n");
+    goto error;
+  }
+
+  data[0] = (void *)req;
+  data[1] = pkg_buf.base;
+  write_req->data = (void *)data;
+
+  int res = uv_write(write_req, (uv_stream_t *)&client->socket,
+                     (uv_buf_t *)&pkg_buf, 1, pc__on_request);
+
+  if(res == -1) {
+    fprintf(stderr, "Send message error %s\n",
+            uv_err_name(uv_last_error(write_req->handle->loop)));
+    goto error;
+  }
+
+  char req_id_str[32];
+  memset(req_id_str, 0, 32);
+  sprintf(req_id_str, "%u", req->id);
+  pc_map_set(&client->requests, req_id_str, req);
+
+  assert(msg_buf.base);
+  free(msg_buf.base);
+
+  return;
+
+error:
+  if(msg_buf.len != -1) free(msg_buf.base);
+  if(pkg_buf.len != -1) free(pkg_buf.base);
+  if(write_req) free(write_req);
+  if(data) free(data);
+  req->cb(req, -1, NULL);
 }
 
 /**
@@ -127,21 +206,36 @@ static void pc__notify(pc_notify_t *req, int status) {
 
   pc_client_t *client = req->client;
   // check client state again
-  if(client->state != PC_ST_CONNECTED) {
+  if(client->state != PC_ST_WORKING) {
     fprintf(stderr, "Fail to notify for Pomelo client not connected.\n");
     req->cb(req, status);
     return;
   }
 
-  // TODO: message encode
-  uv_buf_t buf;
+  pc_buf_t msg_buf;
+  pc_buf_t pkg_buf;
+  memset(&msg_buf, 0, sizeof(pc_buf_t));
+  memset(&pkg_buf, 0, sizeof(pc_buf_t));
 
-  if(buf.len == -1) {
-    fprintf(stderr, "Fail to encode notify message.\n");
+  uv_write_t * write_req = NULL;
+  void** data = NULL;
+
+  msg_buf = pc_msg_encode(0, req->route, req->msg, client->route_to_code,
+                          client->pb_map);
+
+  if(msg_buf.len == -1) {
+    fprintf(stderr, "Fail to encode request message.\n");
     goto error;
   }
 
-  uv_write_t * write_req = (uv_write_t *)malloc(sizeof(uv_write_t));
+  pkg_buf = pc_pkg_encode(PC_PKG_DATA, msg_buf.base, msg_buf.len);
+
+  if(msg_buf.len == -1) {
+    fprintf(stderr, "Fail to encode request package.\n");
+    goto error;
+  }
+
+  write_req = (uv_write_t *)malloc(sizeof(uv_write_t));
 
   if(write_req == NULL) {
     goto error;
@@ -150,10 +244,18 @@ static void pc__notify(pc_notify_t *req, int status) {
   memset(write_req, 0, sizeof(uv_write_t));
 
   // record notify context
-  write_req->data = (void *)req;
+  data = (void **)malloc(sizeof(void *) * 2);
+  if(data == NULL) {
+    fprintf(stderr, "Fail to malloc void** for pc__request.\n");
+    goto error;
+  }
+
+  data[0] = (void *)req;
+  data[1] = pkg_buf.base;
+  write_req->data = (void *)data;
 
   int res = uv_write(write_req, (uv_stream_t *)&client->socket,
-                     &buf, 1, pc__on_notify);
+                     (uv_buf_t *)&pkg_buf, 1, pc__on_notify);
 
   if(res == -1) {
     fprintf(stderr, "Send message error %s\n",
@@ -161,16 +263,17 @@ static void pc__notify(pc_notify_t *req, int status) {
     goto error;
   }
 
+  assert(msg_buf.base);
+  free(msg_buf.base);
+
   return;
 
 error:
-  if(buf.len != -1) free(buf.base);
+  if(msg_buf.len != -1) free(msg_buf.base);
+  if(pkg_buf.len != -1) free(pkg_buf.base);
   if(write_req) free(write_req);
+  if(data) free(data);
   req->cb(req, -1);
-}
-
-static void pc__request(pc_request_t *req, int status) {
-
 }
 
 /**
@@ -185,6 +288,15 @@ static uv_buf_t pc__alloc_buffer(uv_handle_t *handle, size_t suggested_size) {
  */
 static void pc__on_tcp_read(uv_stream_t *socket, ssize_t nread, uv_buf_t buf) {
   pc_client_t *client = (pc_client_t *)socket->data;
+  printf("nread: %lu\n", nread);
+  printf("client state: %d\n", client->state);
+  for(int i=0; i<nread; i++) {
+    printf("%02x ", buf.base[i]);
+  }
+  printf("\n");
+  if(PC_ST_CLOSED == client->state) {
+    return;
+  }
   if (nread == -1) {
     if (uv_last_error(socket->loop).code != UV_EOF)
       fprintf(stderr, "Read error %s\n",
@@ -244,9 +356,10 @@ static void pc__on_tcp_connect(uv_connect_t *req, int status) {
 
 // Async write for pc_notify or pc_request may be invoked in other threads.
 static int pc__async_write(pc_client_t *client, pc_tcp_req_t *req,
-                           const char *route, pc_message_t *msg) {
-  if(client->state != PC_ST_CONNECTED) {
-    fprintf(stderr, "Pomelo client not connected.\n");
+                           const char *route, json_t *msg) {
+  assert(client->state == PC_ST_WORKING);
+  if(client->state != PC_ST_WORKING) {
+    fprintf(stderr, "Pomelo client not working: %d.\n", client->state);
     return -1;
   }
   if(!req || !route /*|| !msg*/) {
@@ -254,6 +367,7 @@ static int pc__async_write(pc_client_t *client, pc_tcp_req_t *req,
     return -1;
   }
 
+  int async_inited = 0;
   req->client = client;
   req->route = route;
   req->msg = msg;
@@ -270,6 +384,8 @@ static int pc__async_write(pc_client_t *client, pc_tcp_req_t *req,
     goto error;
   }
 
+  async_inited = 1;
+
   async_req->data = (void *)req;
   if(uv_async_send(async_req)) {
     fprintf(stderr, "Fail to send async write tcp request, type: %d.\n",
@@ -283,13 +399,18 @@ error:
   if(req->route) {
     free((void *)req->route);
   }
-  if(async_req) free(async_req);
+  if(async_inited) {
+    // should not release the async_req before close callback
+    uv_close((uv_handle_t *)async_req, pc__handle_close_cb);
+  } else {
+    if(async_req) free(async_req);
+  }
   return -1;
 }
 
 static void pc__async_write_cb(uv_async_t* req, int status) {
   pc_tcp_req_t *tcp_req = (pc_tcp_req_t *)req->data;
-  free(req);
+  uv_close((uv_handle_t *)req, pc__handle_close_cb);
   if(tcp_req->type == PC_NOTIFY) {
     pc__notify((pc_notify_t *)tcp_req, status);
   } else if(tcp_req->type == PC_REQUEST) {
@@ -303,15 +424,38 @@ static void pc__async_write_cb(uv_async_t* req, int status) {
 }
 
 /**
- * Notify callback.
+ * Request callback.
  */
-static void pc__on_notify(uv_write_t *req, int status) {
-  pc_notify_t *notify_req = (pc_notify_t *)req->data;
-  pc_client_t *client = (pc_client_t *)notify_req->client;
-  char *base = (char *)notify_req->data;
+static void pc__on_request(uv_write_t *req, int status) {
+  void **data = (void **)req->data;
+  pc_request_t *request_req = (pc_request_t *)data[0];
+  pc_client_t *client = request_req->client;
+  char *base = (char *)data[1];
 
   free(base);
   free(req);
+  free(data);
+
+  if(status == -1) {
+    fprintf(stderr, "Request error %s\n",
+            uv_err_name(uv_last_error(req->handle->loop)));
+    request_req->cb(request_req, status, NULL);
+    return;
+  }
+}
+
+/**
+ * Notify callback.
+ */
+static void pc__on_notify(uv_write_t *req, int status) {
+  void **data = (void **)req->data;
+  pc_notify_t *notify_req = (pc_notify_t *)data[0];
+  pc_client_t *client = (pc_client_t *)notify_req->client;
+  char *base = (char *)data[1];
+
+  free(base);
+  free(req);
+  free(data);
 
   if(status == -1) {
     fprintf(stderr, "Notify error %s\n",
@@ -323,7 +467,10 @@ static void pc__on_notify(uv_write_t *req, int status) {
 
 int pc__binary_write(pc_client_t *client, const char *data, size_t len,
                             uv_write_cb cb) {
-  uv_write_t *req = (uv_write_t *)malloc(sizeof(uv_write_t));
+  uv_write_t *req = NULL;
+  void **attach = NULL;
+
+  req = (uv_write_t *)malloc(sizeof(uv_write_t));
   if(req == NULL) {
     fprintf(stderr, "Fail to malloc for uv_write_t.\n");
     goto error;
@@ -331,7 +478,7 @@ int pc__binary_write(pc_client_t *client, const char *data, size_t len,
 
   memset(req, 0, sizeof(uv_write_t));
 
-  void **attach = (void **)malloc(sizeof(void *) * 2);
+  attach = (void **)malloc(sizeof(void *) * 2);
   if(data == NULL) {
     fprintf(stderr, "Fail to malloc data for handshake ack.\n");
     goto error;

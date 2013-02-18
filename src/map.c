@@ -32,6 +32,11 @@ int pc_map_init(pc_map_t *map) {
   return 0;
 }
 
+void pc_map_close(pc_map_t *map) {
+  // TODO: iterate and release listner lists
+  hashtable_close(&map->table);
+}
+
 int pc_map_set(pc_map_t *map, const char *key, void *value) {
   return hashtable_set(&map->table, key, 0, value);
 }

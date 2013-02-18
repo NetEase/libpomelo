@@ -19,7 +19,7 @@
 #define PC_PKG_TYPE_MASK 0xff
 #define PC_PKG_TYPE_BYTES 1
 #define PC_PKG_BODY_LEN_BYTES 3
-#define PC_PKG_HEAD_BYTES 4
+#define PC_PKG_HEAD_BYTES (PC_PKG_TYPE_BYTES + PC_PKG_BODY_LEN_BYTES)
 #define PC_PKG_MAX_BODY_BYTES (1 << 24)
 
 #define pc__pkg_type(head) (head[0] & 0xff)
@@ -67,6 +67,8 @@ struct pc_buf_s {
 pc_pkg_parser_t *pc_pkg_parser_new(pc_pkg_cb cb, void *attach);
 
 int pc_pkg_parser_init(pc_pkg_parser_t *pro, pc_pkg_cb cb, void *attach);
+
+void pc_pkg_parser_close(pc_pkg_parser_t *parser);
 
 void pc_pkg_parser_destroy(pc_pkg_parser_t *parser);
 

@@ -4,13 +4,53 @@
 #include <netinet/in.h>
 #include <pomelo-client.h>
 #include <unistd.h>
+#include <jansson.h>
 
 const char *ip = "127.0.0.1";
-int port = 3014;
+int port = 3010;
+pc_request_t request;
+pc_notify_t notify;
+char *route = "connector.helloHandler.hello";
+char *route2 = "connector.helloHandler.hi";
+
+
+// request callback
+void on_request_cb(pc_request_t *req, int status, json_t *resp) {
+  printf("request status: %d\n", status);
+
+  if(status == 0) {
+    printf("response: %s\n", json_dumps(resp, 0));
+  }
+
+  json_t *msg = req->data;
+  json_decref(msg);
+
+  pc_disconnect(req->client);
+}
+
+void do_request(pc_client_t *client, json_t *msg) {
+  pc_request_init(&request);
+  request.client = client;
+  request.data = msg;
+  pc_request(client, &request, route2, msg, on_request_cb);
+}
+
 
 // notified callback
 void on_notified(pc_notify_t *req, int status) {
-  free(req);
+  pc_client_t *client = req->client;
+  json_t *msg = (json_t *)req->data;
+  json_object_set(msg, "hi", json_string("hi~~~~~"));
+
+  // send request
+  do_request(client, msg);
+}
+
+void do_notify(pc_client_t *client, json_t *msg) {
+  pc_notify_init(&notify);
+  notify.client = client;
+  notify.data = msg;
+  pc_notify(client, &notify, route, msg, on_notified);
 }
 
 // connection established callback
@@ -21,14 +61,20 @@ void on_connected(pc_connect_t* req, int status) {
     printf("Connection established.\n");
   }
 
+  pc_client_t *client = req->client;
+
   // clean up
   free(req->address);
   free(req);
+
+  json_t *msg = json_object();
+  json_object_set(msg, "msg", json_string("hello"));
+
+  // send notify
+  do_notify(client, msg);
 }
 
 int main() {
-  uv_tty_t tty;
-
   // create and init Pomelo client instance
   pc_client_t *client = (pc_client_t *)malloc(sizeof(pc_client_t));
 
