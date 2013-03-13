@@ -10,13 +10,17 @@
 
 typedef struct pc_map_s pc_map_t;
 
+typedef void (*pc_map_value_release)(pc_map_t *map, const char *key,
+                                     void *value);
+
 struct pc_map_s {
-  hashtable_t table;
+  hashtable_t *table;
+  pc_map_value_release release_value;
 };
 
-pc_map_t *pc_map_new();
+pc_map_t *pc_map_new(pc_map_value_release release_value);
 
-int pc_map_init(pc_map_t *map);
+int pc_map_init(pc_map_t *map, pc_map_value_release release_value);
 
 void pc_map_destroy(pc_map_t *map);
 
@@ -29,15 +33,5 @@ void *pc_map_get(pc_map_t *map, const char *key);
 int pc_map_del(pc_map_t *map, const char *key);
 
 void pc_map_clear(pc_map_t *map);
-
-void *pc_map_iter(pc_map_t *map);
-
-void *pc_map_iter_at(pc_map_t *map, const char *key);
-
-void *pc_map_iter_next(pc_map_t *map, void *iter);
-
-void *pc_map_iter_key(void *iter);
-
-void *pc_map_iter_value(void *iter);
 
 #endif

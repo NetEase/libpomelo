@@ -27,59 +27,138 @@
 typedef struct pc_pkg_parser_s pc_pkg_parser_t;
 typedef struct pc_buf_s pc_buf_t;
 
+/**
+ * State machine for Pomelo package parser
+ */
 typedef enum {
-  PC_PKG_HEAD = 1,
-  PC_PKG_BODY,
+  PC_PKG_HEAD = 1,        /* parsing header */
+  PC_PKG_BODY,            /* parsing body */
   PC_PKG_CLOSED
 } pc_pkg_parser_state;
 
+/**
+ * Package type of Pomelo package
+ */
 typedef enum {
   PC_PKG_HANDSHAKE = 1,
   PC_PKG_HANDSHAKE_ACK,
   PC_PKG_HEARBEAT,
-  PC_PKG_DATA
+  PC_PKG_DATA,
+  PC_PKG_KICK
 } pc_pkg_type;
 
+/**
+ * New Pomelo package arrived callback.
+ *
+ * @param  type   package type, refer: pc_pkg_type.
+ * @param  data   package body in bytes
+ * @param  len    package body length in bytes
+ * @param  attach attach pointer passed to package parser before
+ */
 typedef void (*pc_pkg_cb)(pc_pkg_type type, const char *data,
               size_t len, void *attach);
 
+/**
+ * Structure for Pomelo package parser which provided the service to collect
+ * the raw data from lower layer (such as tcp) and parse them into Pomleo
+ * package.
+ */
 struct pc_pkg_parser_s {
+  /*! Buffer for package header bytes. */
   char head_buf[PC_PKG_HEAD_BYTES];
+  /*! Buffer for package body bytes. */
   char *pkg_buf;
 
+  /*! Offset of header buffer. */
   size_t head_offset;
+  /*! Size of header buffer. */
   size_t head_size;
 
+  /*! Offset of body buffer. */
   size_t pkg_offset;
+  /*! Size of body buffer. */
   size_t pkg_size;
 
+  /*! New Package arrived callback. */
   pc_pkg_cb cb;
+  /*! Attach pointer that would be pass to pc_pkg_cb. */
   void *attach;
 
+  /*! State of the package parser. */
   pc_pkg_parser_state state;
 };
 
+/**
+ * Simple structure for memory block.
+ * The pc_buf_s is cheap and could be passed by value.
+ */
 struct pc_buf_s {
   char *base;
   size_t len;
 };
 
+/**
+ * Create a Pomelo package parser.
+ *
+ * @param  cb     new package arrived callback.
+ * @param  attach attach pointer that would be pass to package arrived callback.
+ * @return        new package parser instance.
+ */
 pc_pkg_parser_t *pc_pkg_parser_new(pc_pkg_cb cb, void *attach);
 
-int pc_pkg_parser_init(pc_pkg_parser_t *pro, pc_pkg_cb cb, void *attach);
-
-void pc_pkg_parser_close(pc_pkg_parser_t *parser);
-
+/**
+ * Destroy a Pomelo package parser instance, release the inner resources and the
+ * package parser. This function is used as couple with pc_pkg_parser_new.
+ *
+ * @param parser pointer to package parser.
+ */
 void pc_pkg_parser_destroy(pc_pkg_parser_t *parser);
 
-void pc_pkg_parser_destroy(pc_pkg_parser_t *pro);
+/**
+ * Initiate a block allocated memory for package parser. Normally, using
+ * pc_pkg_parser_new is enough.
+ *
+ * @param  pro    allocated memory for package parser instance.
+ * @param  cb     new package arrived callback.
+ * @param  attach attach pointer that would be pass to package arrived callback.
+ * @return        0 for ok and -1 for fails.
+ */
+int pc_pkg_parser_init(pc_pkg_parser_t *pro, pc_pkg_cb cb, void *attach);
 
+/**
+ * Close a package parser and release the inner resources. But NOT release the
+ * parser itself. This function is used as couple with pc_pkg_parser_init.
+ *
+ * @param parser pointer to package parser.
+ */
+void pc_pkg_parser_close(pc_pkg_parser_t *parser);
+
+/**
+ * Reset the package parser state to the initiated state.
+ *
+ * @param pro pointer to package parser.
+ */
 void pc_pkg_parser_reset(pc_pkg_parser_t *pro);
 
+/**
+ * Feed data to the package parser which would fire the state machine of the
+ * parser to parse the header or body of the package.
+ *
+ * @param  pro   pointer of package parser.
+ * @param  data  new data to feed.
+ * @param  nread length of data.
+ * @return       0 for ok and -1 for error.
+ */
 int pc_pkg_parser_feed(pc_pkg_parser_t *pro, const char *data, size_t nread);
 
+/**
+ * Encode data to Pomelo package.
+ *
+ * @param  type Pomelo package type, refer: pc_pkg_type.
+ * @param  data data to encode.
+ * @param  len  length of data.
+ * @return      buffer for encode result. buf.len = -1 for error.
+ */
 pc_buf_t pc_pkg_encode(pc_pkg_type type, const char *data, size_t len);
-
-pc_buf_t pc_json_encode(const char *route, const json_t *msg);
 
 #endif /* POMELO_PACKAGE_H */

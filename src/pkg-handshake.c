@@ -28,16 +28,12 @@ int pc__handshake_req(pc_client_t *client) {
 
   json_object_set(body, "sys", sys);
 
+  json_object_set(sys, "type", json_string(PC_TYPE));
   json_object_set(sys, "version", json_string(PC_VERSION));
 
   if(handshake_opts) {
-    json_t *heartbeat = json_object_get(handshake_opts, "heartbeat");
-    if(heartbeat) {
-      json_object_set(sys, "heartbeat", heartbeat);
-    }
-
     json_t *user = json_object_get(handshake_opts, "user");
-    if(heartbeat) {
+    if(user) {
       json_object_set(body, "user", user);
     }
   }
@@ -63,19 +59,19 @@ error:
 }
 
 int pc__handshake_resp(pc_client_t *client,
-                                const char *data, size_t len) {
+                       const char *data, size_t len) {
   json_error_t error;
   json_t *res = json_loadb(data, len, 0, &error);
 
   if(res == NULL) {
     fprintf(stderr, "Fail to parse handshake package. %s\n", error.text);
-    return -1;
+    goto error;
   }
 
   json_int_t code = json_integer_value(json_object_get(res, "code"));
   if(code != PC_HANDSHAKE_OK) {
     fprintf(stderr, "Handshake fail, code: %d.\n", (int)code);
-    return -1;
+    goto error;
   }
 
   json_t *sys = json_object_get(res, "sys");
@@ -87,19 +83,40 @@ int pc__handshake_resp(pc_client_t *client,
       client->heartbeat = -1;
       client->timeout = -1;
     } else {
-      client->heartbeat = hb > 0 ? hb : PC_DEFAULT_HEARTBEAT;
-      json_int_t to = json_integer_value(json_object_get(sys, "timeout"));
-      client->timeout = to > client->heartbeat ? to : PC_DEFAULT_TIMEOUT;
-      uv_timer_set_repeat(&client->heartbeat_timer, client->heartbeat);
-      uv_timer_set_repeat(&client->timeout_timer, client->timeout);
+      if(hb > 0) {
+        client->heartbeat = hb * 1000;
+        client->timeout = client->heartbeat * PC_HEARTBEAT_TIMEOUT_FACTOR;
+        uv_timer_set_repeat(client->heartbeat_timer, client->heartbeat);
+        uv_timer_set_repeat(client->timeout_timer, client->timeout);
+      } else {
+        client->heartbeat = -1;
+        client->timeout = -1;
+      }
     }
 
     // setup route dictionary
-    json_t *dics = json_object_get(sys, "dictionary");
-    if(dics) {
-      //TODO: dictionary name?
-      client->route_to_code = NULL;
-      client->code_to_route = NULL;
+    json_t *dict = json_object_get(sys, "dict");
+    if(dict) {
+      client->route_to_code = dict;
+      client->code_to_route = json_object();
+      const char *key;
+      json_t *value;
+      char code_str[8];
+      json_object_foreach(dict, key, value) {
+        memset(code_str, 0, 8);
+        sprintf(code_str, "%d", (int)json_integer_value(value));
+        json_object_set(client->code_to_route, code_str, json_string(key));
+      }
+    }
+
+    // setup protobuf data definition
+    json_t *protos = json_object_get(sys, "protos");
+
+    if(protos) {
+      client->server_protos = json_object_get(protos, "server");
+      client->client_protos = json_object_get(protos, "client");
+      json_incref(client->server_protos);
+      json_incref(client->client_protos);
     }
   }
 
@@ -109,11 +126,18 @@ int pc__handshake_resp(pc_client_t *client,
     status = client->handshake_cb(client, user);
   }
 
+  // release json parse result
+  json_decref(res);
+
   if(!status) {
     pc__handshake_ack(client);
   }
 
   return 0;
+
+error:
+  json_decref(res);
+  return -1;
 }
 
 int pc__handshake_ack(pc_client_t *client) {
@@ -147,10 +171,11 @@ static void pc__handshake_req_cb(uv_write_t* req, int status) {
   if(status == -1) {
     fprintf(stderr, "Fail to write handshake request async, %s.\n",
             uv_err_name(uv_last_error(client->uv_loop)));
-    pc_disconnect(client);
+    pc_disconnect(client, 1);
     if(client->conn_req) {
-      client->conn_req->cb(client->conn_req, status);
+      pc_connect_t *conn_req = client->conn_req;
       client->conn_req = NULL;
+      conn_req->cb(conn_req, status);
     }
   }
 }
@@ -167,12 +192,13 @@ static void pc__handshake_ack_cb(uv_write_t* req, int status) {
   if(status == -1) {
     fprintf(stderr, "Fail to write handshake ack async, %s.\n",
             uv_err_name(uv_last_error(client->uv_loop)));
-    pc_disconnect(client);
+    pc_disconnect(client, 1);
   } else {
     client->state = PC_ST_WORKING;
     if(client->conn_req) {
-      client->conn_req->cb(client->conn_req, 0);
+      pc_connect_t *conn_req = client->conn_req;
       client->conn_req = NULL;
+      conn_req->cb(conn_req, 0);
     }
   }
 }
@@ -189,8 +215,8 @@ static int pc__handshake_sys(pc_client_t *client, json_t *sys) {
     client->timeout = to > client->heartbeat ? to : PC_DEFAULT_TIMEOUT;
   }
 
-  uv_timer_set_repeat(&client->heartbeat_timer, client->heartbeat);
-  uv_timer_set_repeat(&client->timeout_timer, client->timeout);
+  uv_timer_set_repeat(client->heartbeat_timer, client->heartbeat);
+  uv_timer_set_repeat(client->timeout_timer, client->timeout);
 
   return 0;
 }

@@ -2,24 +2,28 @@
 #include <pomelo-protocol/message.h>
 
 int main() {
+  uint32_t id = 1;
   char *route = "connector.helloHandler.hello";
   json_t *msg = json_object();
   json_object_set(msg, "msg", json_string("hello"));
 
-  pc_buf_t buf = pc_msg_encode(1, route, msg, NULL, NULL);
+  pc_buf_t body_buf = pc__json_encode(msg);
+
+  pc_buf_t buf = pc_msg_encode_route(id, PC_MSG_REQUEST, route, body_buf);
 
   assert(buf.len > 0);
 
-  for(int i=0; i<buf.len; i++) {
-    printf("%02x ", buf.base[i]);
-  }
+  pc__msg_raw_t *raw_msg = pc_msg_decode(buf.base, buf.len);
 
-  printf("\n");
+  assert(raw_msg);
+  assert(raw_msg->id == id);
+  assert(!strcmp(route, raw_msg->route.route_str));
+  assert(!memcmp(body_buf.base, raw_msg->body.base, body_buf.len));
 
-  pc_msg_t *pmsg = pc_msg_decode(buf.base, buf.len, NULL, NULL);
+  json_t *body = pc__json_decode(raw_msg->body.base, 0, raw_msg->body.len);
 
-  assert(pmsg);
+  assert(body);
 
-  printf("after decode id: %d, route: %s, body: %s\n", pmsg->id, pmsg->route,
-         json_dumps(pmsg->msg, 0));
+  printf("after decode id: %d, route: %s, body: %s\n", raw_msg->id,
+         raw_msg->route.route_str, json_dumps(body, 0));
 }

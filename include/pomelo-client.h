@@ -27,7 +27,8 @@ extern "C" {
 #include <pomelo-private/map.h>
 #include <pomelo-protocol/package.h>
 
-#define PC_VERSION "1.1.1"
+#define PC_TYPE "c"
+#define PC_VERSION "0.0.1"
 
 #define PC_EVENT_DISCONNECT "disconnect"
 #define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
@@ -37,25 +38,35 @@ extern "C" {
 
 #define PC_HANDSHAKE_OK 200
 
+#define PC_HEARTBEAT_TIMEOUT_FACTOR 2
+
 typedef struct pc_client_s pc_client_t;
 typedef struct pc_req_s pc_req_t;
 typedef struct pc_connect_s pc_connect_t;
 typedef struct pc_tcp_req_s pc_tcp_req_t;
 typedef struct pc_request_s pc_request_t;
 typedef struct pc_notify_s pc_notify_t;
+typedef struct pc_msg_s pc_msg_t;
 
-typedef void (*pc_event_cb)(const char *, void *attach);
+typedef void (*pc_event_cb)(pc_client_t *client, const char *event, void *data);
 typedef void (*pc_connect_cb)(pc_connect_t* req, int status);
 typedef void (*pc_request_cb)(pc_request_t *, int, json_t *);
 typedef void (*pc_notify_cb)(pc_notify_t *, int);
 typedef int (*pc_handshake_cb)(pc_client_t *, json_t *);
 typedef void (*pc_handshake_req_cb)(pc_client_t *, pc_connect_t *, int);
+typedef pc_msg_t *(*pc_msg_parse_cb)(pc_client_t *, const char *, int);
+typedef void (*pc_msg_parse_done_cb)(pc_client_t *, pc_msg_t *);
+typedef pc_buf_t (*pc_msg_encode_cb)(pc_client_t *, uint32_t reqId,
+                                     const char* route, json_t *msg);
+typedef void (*pc_msg_encode_done_cb)(pc_client_t *, pc_buf_t buf);
+typedef void (*pc_disconnect_cb)(pc_client_t *client);
 
 /**
  * Pomelo client states.
  */
 typedef enum {
   PC_ST_INITED = 1,
+  PC_ST_CONNECTING,
   PC_ST_CONNECTED,
   PC_ST_WORKING,
   PC_ST_CLOSED
@@ -74,12 +85,12 @@ typedef enum {
   /* private */                                                               \
   pc_client_t *client;                                                        \
   pc_req_type type;                                                           \
+  void *data;                                                                 \
 
 #define PC_TCP_REQ_FIELDS                                                     \
   /* public */                                                                \
   const char *route;                                                          \
   json_t *msg;                                                                \
-  void *data;                                                                 \
 
 /**
  * The abstract base class of all async request in Pomelo client.
@@ -100,23 +111,29 @@ struct pc_tcp_req_s {
  * Pomelo client instance
  */
 struct pc_client_s {
+  /* public */
   pc_client_state state;
   /* private */
   uv_loop_t *uv_loop;
-  uv_tcp_t socket;
-  pc_map_t listeners;
-  pc_map_t requests;
-  pc_pkg_parser_t pkg_parser;
+  uv_tcp_t *socket;
+  pc_map_t *listeners;
+  pc_map_t *requests;
+  pc_pkg_parser_t *pkg_parser;
   int heartbeat;
   int timeout;
-  uv_timer_t heartbeat_timer;
-  uv_timer_t timeout_timer;
+  uv_timer_t *heartbeat_timer;
+  uv_timer_t *timeout_timer;
   json_t *handshake_opts;
   pc_handshake_cb handshake_cb;
   pc_connect_t *conn_req;
   json_t *route_to_code;
   json_t *code_to_route;
-  json_t *pb_map;
+  json_t *server_protos;
+  json_t *client_protos;
+  pc_msg_parse_cb parse_msg;
+  pc_msg_parse_done_cb parse_msg_done;
+  pc_msg_encode_cb encode_msg;
+  pc_msg_encode_done_cb encode_msg_done;
 };
 
 /**
@@ -141,6 +158,7 @@ struct pc_request_s {
   PC_TCP_REQ_FIELDS
   uint32_t id;
   pc_request_cb cb;
+  ngx_queue_t queue;
 };
 
 /**
@@ -153,25 +171,41 @@ struct pc_notify_s {
   pc_notify_cb cb;
 };
 
-struct pc_message_s {
+struct pc_msg_s {
+  uint32_t id;
+  const char* route;
+  json_t *msg;
 };
 
 /**
- * Initiate Pomelo client intance.
+ * Create and initiate Pomelo client intance.
  *
- * @param  client Pomelo client instance
- * @return        0 or -1
+ * @return Pomelo client instance
  */
-int pc_client_init(pc_client_t *client);
+pc_client_t *pc_client_new();
 
 /**
- * Initiate connect request instance.
+ * Disconnect the client connection if necessary and release the inner resource
+ * of pomelo client instance.
  *
- * @param  req     connect request instance
- * @param  address server address
- * @return         0 or -1
+ * @param client Pomelo client instance.
  */
-int pc_connect_init(pc_connect_t *req, struct sockaddr_in *address);
+void pc_client_destroy(pc_client_t *client);
+
+/**
+ * Create and initiate connect request instance.
+ *
+ * @param  address server address
+ * @return         connect request instance
+ */
+pc_connect_t *pc_connect_req_new(struct sockaddr_in *address);
+
+/**
+ * Destroy a connect request instance and release inner resources.
+ *
+ * @param  req connect request instance.
+ */
+void pc_connect_req_destroy(pc_connect_t *req);
 
 /**
  * Connect Pomelo client to server.
@@ -186,19 +220,28 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
                json_t *handshake_opts, pc_connect_cb cb);
 
 /**
- * Initiate request instance.
- * The route string and message object must keep until the pc_notify_cb invoke.
+ * Create and initiate a request instance.
  *
- * @param  req request instance
- * @return     0 or -1
+ * @return     req request instance
  */
-int pc_request_init(pc_request_t *req);
+pc_request_t *pc_request_new();
+
+/**
+ * Destroy and release inner resource of a request instance.
+ *
+ * @param req request instance to be destroied.
+ */
+void pc_request_destroy(pc_request_t *req);
 
 /**
  * Send rerquest to server.
+ * The message object and request object must keep
+ * until the pc_request_cb invoked.
  *
  * @param  client Pomelo client instance
  * @param  req    initiated request instance
+ * @param  route  route string
+ * @param  msg    message object
  * @param  cb     request callback
  * @return        0 or -1
  */
@@ -206,16 +249,23 @@ int pc_request(pc_client_t *client, pc_request_t *req, const char *route,
                json_t *msg, pc_request_cb cb);
 
 /**
- * Initiate notify instance.
+ * Create and initiate notify instance.
  *
- * @param  req   notify instance
- * @return       0 or -1
+ * @return   notify instance
  */
-int pc_notify_init(pc_notify_t *req);
+pc_notify_t *pc_notify_new();
+
+/**
+ * Destroy and release inner resource of a notify instance.
+ *
+ * @param req notify instance to be destroied.
+ */
+void pc_notify_destroy(pc_notify_t *req);
 
 /**
  * Send notify to server.
- * The message object must keep until the pc_notify_cb invoke.
+ * The message object and notify object must keep
+ * until the pc_notify_cb invoked.
  *
  * @param  client Pomelo client instance
  * @param  req    initiated notify instance
@@ -227,18 +277,17 @@ int pc_notify_init(pc_notify_t *req);
 int pc_notify(pc_client_t *client, pc_notify_t *req, const char *route,
               json_t *msg, pc_notify_cb cb);
 
-int pc_notify_cleanup(pc_notify_t *req);
-
-int pc_disconnect(pc_client_t *client);
+/**
+ * Disconnect Pomelo client and reset all status back to initialted.
+ *
+ * @param client Pomelo client instance.
+ */
+void pc_disconnect(pc_client_t *client, int reset);
 
 int pc_run(pc_client_t *client);
 
-int pc_stop(pc_client_t *client);
-
-/**
- * Return the default pomelo client loop instance.
- */
-PC_EXTERN pc_client_t * pc_default_client(void);
+int pc_add_listener(pc_client_t *client, const char *event,
+                    pc_event_cb event_cb);
 
 /* Don't export the private CPP symbols. */
 #undef PC_TCP_REQ_FIELDS

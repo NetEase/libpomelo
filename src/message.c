@@ -1,166 +1,237 @@
 #include <assert.h>
 #include <pomelo-protocol/message.h>
 
-size_t pc__msg_decode_compressed_head(const char *data, size_t offset,
-                                      size_t len, const json_t *code_dic,
-                                      const char **route);
-size_t pc__msg_decode_uncompressed_head(const char *data, size_t offset,
-                                  size_t len, const char **route);
+uint8_t pc__msg_id_length(uint32_t id);
 
-pc_buf_t pc_msg_encode(uint32_t id, const char *route, const json_t *msg,
-                       json_t *route_dic, const json_t *pb_map) {
-  pc_buf_t buf, body_buf;
+static inline size_t pc__msg_encode_flag(pc_msg_type type, int compressRoute,
+                                         char *base, size_t offset);
+
+static inline size_t pc__msg_encode_id(uint32_t id, uint8_t id_len,
+                                       char *base, size_t offset);
+
+static inline size_t pc__msg_encode_route(const char *route, uint16_t route_len,
+                                          char *base, size_t offset);
+
+pc_buf_t pc_msg_encode_route(uint32_t id, pc_msg_type type,
+                             const char *route, pc_buf_t msg) {
+  pc_buf_t buf;
 
   memset(&buf, 0, sizeof(pc_buf_t));
-  memset(&body_buf, 0, sizeof(pc_buf_t));
 
-  size_t total_len = PC_MSG_HEAD_BYTES;
-  uint16_t code = json_integer_value(json_object_get(route_dic, route));
-  int route_len = strlen(route) & 0xffff;   // route length is 1 byte
+  uint8_t id_len = PC_MSG_HAS_ID(type) ? pc__msg_id_length(id) : 0;
+  uint16_t route_len = PC_MSG_HAS_ROUTE(type) ? strlen(route) : 0;
 
-  if(code == 0) {
-    // uncompressed head
-    total_len += PC_MSG_UNCOMPRESSED_ROUTE_LEN_BYTES + route_len;
-  } else {
-    // compressed head
-    total_len += PC_MSG_COMPRESSED_ROUTE_BYTES;
-  }
+  size_t msg_len = PC_MSG_FLAG_BYTES + id_len + PC_MSG_ROUTE_LEN_BYTES +
+                   route_len + msg.len;
 
-  // encode body
-  if(pb_map) {
-    json_t *pb = pc__pb_get(pb_map, route);
-    if(pb != NULL) {
-      body_buf = pc__pb_encode(route, msg, pb);
-    } else {
-      body_buf = pc__json_encode(msg);
-    }
-  } else {
-    body_buf = pc__json_encode(msg);
-  }
-
-  if(body_buf.len == -1) {
-    goto error;
-  }
-
-  total_len += body_buf.len;
-
-  buf.base = malloc(total_len);
+  char *base = buf.base = malloc(msg_len);
 
   if(buf.base == NULL) {
+    buf.len = -1;
     goto error;
   }
 
-  buf.len = total_len;
-  char *data = buf.base;
+  size_t offset = 0;
 
-  // encode messge id
-  uint32_t t_id = id;
-  for(int i=PC_MSG_HEAD_BYTES-2; i>=0; i--) {
-    data[i] = t_id & 0xff;
-    t_id >>= 8;
+  // flag
+  offset = pc__msg_encode_flag(type, 0, base, offset);
+
+  // message id
+  if(PC_MSG_HAS_ID(type)) {
+    offset = pc__msg_encode_id(id, id_len, base, offset);
   }
 
-  size_t offset = PC_MSG_HEAD_BYTES - 1;
-  if(code == 0) {
-    // flags
-    data[offset++] = 0;
-    // route length
-    data[offset++] = route_len;
-    memcpy(data + offset, route, route_len);
-    offset += route_len;
-  } else {
-    // flags
-    data[offset++] = 1;
-    // route code
-    int t_code = code;
-    char *t_base = data + offset;
-    for(int i=PC_MSG_COMPRESSED_ROUTE_BYTES-1; i>=0; i++) {
-      t_base[i] = t_code & 0xff;
-      t_code >>= 8;
-    }
-    offset += PC_MSG_COMPRESSED_ROUTE_BYTES;
+  // route
+  if(PC_MSG_HAS_ROUTE(type)) {
+    offset = pc__msg_encode_route(route, route_len, base, offset);
   }
 
-  memcpy(data + offset, body_buf.base, body_buf.len);
+  // body
+  memcpy(base + offset, msg.base, msg.len);
 
-  assert(body_buf.len > 0);
-  free(body_buf.base);
+  buf.len = msg_len;
 
   return buf;
 
 error:
   if(buf.len != -1) free(buf.base);
-  if(body_buf.len != -1) free(body_buf.base);
   buf.len = -1;
   return buf;
 }
 
-pc_msg_t *pc_msg_decode(const char *data, size_t len,
-                        const json_t *code_dic, const json_t *pb_map) {
-  if(len < PC_MSG_HEAD_BYTES) {
-    fprintf(stderr, "Invalid Pomelo message.\n");
-    return NULL;
+pc_buf_t pc_msg_encode_code(uint32_t id, pc_msg_type type,
+                            int routeCode, pc_buf_t msg) {
+  pc_buf_t buf;
+
+  memset(&buf, 0, sizeof(pc_buf_t));
+
+  uint8_t id_len = PC_MSG_HAS_ID(type) ? pc__msg_id_length(id) : 0;
+  uint16_t route_len = PC_MSG_HAS_ROUTE(type) ? PC_MSG_ROUTE_CODE_BYTES : 0;
+
+  size_t msg_len = PC_MSG_FLAG_BYTES + id_len + route_len + msg.len;
+
+  char *base = buf.base = malloc(msg_len);
+
+  if(buf.base == NULL) {
+    buf.len = -1;
+    goto error;
   }
 
-  pc_msg_t *msg = NULL;
-  const char *route_str = NULL;
+  size_t offset = 0;
 
-  msg = (pc_msg_t *)malloc(sizeof(pc_msg_t));
+  // flag
+  offset = pc__msg_encode_flag(type, 1, base, offset);
+
+  // message id
+  if(PC_MSG_HAS_ID(type)) {
+    offset = pc__msg_encode_id(id, id_len, base, offset);
+  }
+
+  // route code
+  if(PC_MSG_HAS_ROUTE(type)) {
+    base[offset++] = (routeCode >> 8) & 0xff;
+    base[offset++] = routeCode & 0xff;
+  }
+
+  // body
+  memcpy(base + offset, msg.base, msg.len);
+
+  buf.len = msg_len;
+
+  return buf;
+
+error:
+  if(buf.len != -1) free(buf.base);
+  buf.len = -1;
+  return buf;
+}
+
+pc__msg_raw_t *pc_msg_decode(const char *data, size_t len) {
+  pc__msg_raw_t *msg = NULL;
+  char *route_str = NULL;
+  char *body = NULL;
+
+  msg = (pc__msg_raw_t *)malloc(sizeof(pc__msg_raw_t));
   if(msg == NULL) {
     fprintf(stderr, "Fail to malloc for pc_msg_t.\n");
     return NULL;
   }
+  memset(msg, 0, sizeof(pc_msg_t));
 
-  // parse message id
+  size_t offset = 0;
+
+  PC__MSG_CHECK_LEN(offset + PC_MSG_FLAG_BYTES, len);
+  // flag
+  uint8_t flag = data[offset++];
+
+  // type
+  uint8_t type = (flag >> 1) & 0xff;
+
+  if(!PC_MSG_VALIDATE(type)) {
+    fprintf(stderr, "Unknown Pomleo message type: %d.\n", type);
+    goto error;
+  }
+
+  msg->type = type;
+
+  // compress flag
+  uint8_t compressRoute = flag & 0x01;
+  msg->compressRoute = compressRoute;
+
+  // message id
   uint32_t id = 0;
-  for(int i=0; i<PC_MSG_HEAD_BYTES-1; i++) {
-    if(i > 0) {
-      id <<= 8;
+
+  if(PC_MSG_HAS_ID(type)) {
+    PC__MSG_CHECK_LEN(offset + 1, len);
+    uint8_t byte = data[offset++];
+    id = byte & 0x7f;
+    while(byte & 0x80) {
+      id <<= 7;
+      PC__MSG_CHECK_LEN(offset + 1, len);
+      byte = data[offset++];
+      id |= byte & 0x7f;
     }
-    id |= *(data + i);
   }
-
-  uint8_t flags = *(data + PC_MSG_HEAD_BYTES);
-  size_t offset = PC_MSG_HEAD_BYTES;
-
-  // parse route string
-  if(PC_MSG_IS_COMPRESSED_ROUTE(flags)) {
-    offset = pc__msg_decode_compressed_head(data, offset, len,
-                                            code_dic, &route_str);
-  } else {
-    offset = pc__msg_decode_uncompressed_head(data, offset, len, &route_str);
-  }
-
-  if(offset == -1) {
-    goto error;
-  }
-
-  json_t *body = NULL;
-  if(pb_map) {
-    json_t *pb = pc__pb_get(pb_map, route_str);
-    if(pb != NULL) {
-      body = pc__pb_decode(data, offset, len, pb);
-    } else {
-      body = pc__json_decode(data, offset, len);
-    }
-  } else {
-    body = pc__json_decode(data, offset, len);
-  }
-
-  if(body == NULL) {
-    goto error;
-  }
-
   msg->id = id;
-  msg->route = route_str;
-  msg->msg = body;
+
+  // route
+  if(PC_MSG_HAS_ROUTE(type)) {
+    if(compressRoute) {
+      PC__MSG_CHECK_LEN(offset + PC_MSG_ROUTE_CODE_BYTES, len);
+      msg->route.route_code |= (data[offset++] & 0xff) << 8;
+      msg->route.route_code |= data[offset++] & 0xff;
+    } else {
+      PC__MSG_CHECK_LEN(offset + PC_MSG_ROUTE_LEN_BYTES, len);
+      size_t route_len = data[offset++];
+
+      if(route_len) {
+        route_str = malloc(route_len + 1);
+        if(route_str == NULL) {
+          fprintf(stderr, "Fail to malloc for message route string.\n");
+          goto error;
+        }
+
+        PC__MSG_CHECK_LEN(offset + route_len, len);
+        memset(route_str, 0, route_len + 1);
+        memcpy(route_str, data + offset, route_len);
+        msg->route.route_str = route_str;
+      }
+
+      offset += route_len;
+    }
+  }
+
+  // body
+  size_t body_len = len - offset;
+  if(body_len) {
+    body = malloc(body_len);
+    memcpy(body, data + offset, body_len);
+  }
+  msg->body.base = body;
+  msg->body.len = body_len;
 
   return msg;
 
 error:
   if(msg) free(msg);
   if(route_str) free((void *)route_str);
+  if(body) free(body);
   return NULL;
+}
+
+static inline size_t pc__msg_encode_flag(pc_msg_type type, int compressRoute,
+                                  char *base, size_t offset) {
+  base[offset++] = (type << 1) | (compressRoute ? 1 : 0);
+  return offset;
+}
+
+static inline size_t pc__msg_encode_id(uint32_t id, uint8_t id_len,
+                                char *base, size_t offset) {
+  size_t index = offset + id_len - 1;
+  base[index--] = id & 0x7f;
+  while(index >= offset) {
+    id >>= 7;
+    base[index--] = (id & 0x7f) | 0x80;
+  }
+  return offset + id_len;
+}
+
+static inline size_t pc__msg_encode_route(const char *route, uint16_t route_len,
+                                   char *base, size_t offset) {
+  base[offset++] = route_len & 0xff;
+
+  memcpy(base + offset, route, route_len);
+
+  return offset + route_len;
+}
+
+uint8_t pc__msg_id_length(uint32_t id) {
+  uint8_t len = 0;
+  do {
+    len += 1;
+    id >>= 7;
+  } while(id > 0);
+  return len;
 }
 
 void pc_msg_destroy(pc_msg_t *msg) {
@@ -173,83 +244,11 @@ void pc_msg_destroy(pc_msg_t *msg) {
   free(msg);
 }
 
-/**
- * Parse compressed route code.
- * Route string returned by route parameter and should be deallocated outside.
- *
- * @param  data   message data
- * @param  offset comopressed route code offset to start to parse
- * @param  len    message data buffer length
- * @param  route  route string if parse successfully or NULL for fail
- * @return        new offset for message data or -1 for error
- */
-size_t pc__msg_decode_compressed_head(const char *data, size_t offset,
-                                      size_t len, const json_t *code_dic,
-                                      const char **route) {
-  uint16_t route_code = 0;
-  const char *base = data + offset;
-  for(int i=0; i<PC_MSG_COMPRESSED_ROUTE_BYTES; i++) {
-    if(i > 0) {
-      route_code <<= 8;
-    }
-    route_code |= base[i];
+void pc__raw_msg_destroy(pc__msg_raw_t *msg) {
+  if(!msg->compressRoute && msg->route.route_str) {
+    free((void *)msg->route.route_str);
   }
-
-  char code_str[32];
-  memset(code_str, 0, 32);
-  sprintf(code_str, "%u", route_code);
-  *route = json_string_value(json_object_get(code_dic, code_str));
-
-  if(*route == NULL) {
-    return -1;
+  if(msg->body.len > 0) {
+    free(msg->body.base);
   }
-
-  return offset + PC_MSG_COMPRESSED_ROUTE_BYTES;
-}
-
-size_t pc__msg_encode_compressed_head(uint16_t code) {
-  return 0;
-}
-
-/**
- * Parse uncompressed route string.
- *
- * @param  data   message data
- * @param  offset comopressed route code offset to start to parse
- * @param  len    message data buffer length
- * @param  route  route string if parse successfully or unspecified for fail
- * @return        new offset for message data or -1 for error
- */
-size_t pc__msg_decode_uncompressed_head(const char *data, size_t offset,
-                                            size_t len, const char **route) {
-  const char *base = data + offset;
-  size_t route_len = 0;
-
-  for(int i=0; i<PC_MSG_UNCOMPRESSED_ROUTE_LEN_BYTES; i++, base++) {
-    if(i > 0) {
-      route_len <<= 8;
-    }
-    route_len |= (unsigned char)*base;
-  }
-
-  offset += PC_MSG_UNCOMPRESSED_ROUTE_LEN_BYTES + route_len;
-  if(offset >= len) {
-    return -1;
-  }
-
-  char *route_str = malloc(route_len + 1);
-
-  if(route_str == NULL) {
-    fprintf(stderr, "Fail to malloc for route string of message.\n");
-    return -1;
-  }
-
-  memcpy(route_str, base, route_len);
-  route_str[route_len] = '\0';
-
-  if(route != NULL) {
-    *route = route_str;
-  }
-
-  return offset;
 }

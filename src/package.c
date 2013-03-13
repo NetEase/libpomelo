@@ -17,6 +17,8 @@ pc_pkg_parser_t *pc_pkg_parser_new(pc_pkg_cb cb, void *attach) {
     return NULL;
   }
 
+  memset(parser, 0, sizeof(pc_pkg_parser_t));
+
   if(pc_pkg_parser_init(parser, cb, attach)) {
     free(parser);
     return NULL;

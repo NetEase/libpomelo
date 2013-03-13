@@ -4,54 +4,57 @@
 #include <jansson.h>
 #include <pomelo-client.h>
 
-/**
- * Pomelo message format:
- *
- * Format One: compressed route
- * +------+-------+------------+------------+
- * |  id  | flags | route code |    body    |
- * +------+-------+------------+------------+
- *     4      1          2
- *
- * Format Two: uncompressed route
- * +------+-------+--------------+--------------+-----------+
- * |  id  | flags | route lenght | route string |   body    |
- * +------+-------+--------------+--------------+-----------+
- *     4      1          1         route length
- *
- * Head: 5 bytes
- *   0 - 3: big-endian message id
- *   5: flags byte, lowest bit: 0 for uncompressed and 1 for compressed route
- * Route: variable
- *   uncompressed
- *     6 - 7: big-endian route code
- *   compressed
- *     6: route length
- *     7 - (route length - 1): utf8 encoded route string
- * Body: all the left bytes in package
- */
+#define PC_MSG_FLAG_BYTES 1
 
-#define PC_MSG_HEAD_BYTES 5
+#define PC_MSG_ROUTE_LEN_BYTES 1
 
-#define PC_MSG_COMPRESSED_ROUTE_BYTES 2
+#define PC_MSG_ROUTE_CODE_BYTES 2
 
-#define PC_MSG_UNCOMPRESSED_ROUTE_LEN_BYTES 1
+#define PC_MSG_HAS_ID(TYPE) ((TYPE) == PC_MSG_REQUEST ||                       \
+                             (TYPE) == PC_MSG_RESPONSE)
 
-#define PC_MSG_IS_COMPRESSED_ROUTE(flags) (flags & 0x01)
+#define PC_MSG_HAS_ROUTE(TYPE) ((TYPE) != PC_MSG_RESPONSE)
 
-typedef struct pc_msg_s pc_msg_t;
+#define PC_MSG_VALIDATE(TYPE) ((TYPE) == PC_MSG_REQUEST ||                     \
+                               (TYPE) == PC_MSG_NOTIFY ||                      \
+                               (TYPE) == PC_MSG_RESPONSE ||                    \
+                               (TYPE) == PC_MSG_PUSH)
 
-struct pc_msg_s {
+#define PC__MSG_CHECK_LEN(INDEX, LENGTH) do {                                  \
+  if((INDEX) > (LENGTH)) {                                                     \
+    goto error;                                                                \
+  }                                                                            \
+}while(0);
+
+#define PC_PB_EVAL_FACTOR 2
+
+typedef enum {
+  PC_MSG_REQUEST = 0,
+  PC_MSG_NOTIFY,
+  PC_MSG_RESPONSE,
+  PC_MSG_PUSH
+} pc_msg_type;
+
+typedef struct {
   uint32_t id;
-  const char *route;
-  json_t *msg;
-};
+  pc_msg_type type;
+  uint8_t compressRoute;
+  union {
+    uint16_t route_code;
+    const char *route_str;
+  } route;
+  pc_buf_t body;
+} pc__msg_raw_t;
 
-pc_buf_t pc_msg_encode(uint32_t id, const char *route, const json_t *msg,
-                       json_t *route_dic, const json_t *pb_map);
+pc_buf_t pc_msg_encode_route(uint32_t id, pc_msg_type type,
+                             const char *route, pc_buf_t msg);
 
-pc_msg_t *pc_msg_decode(const char *data, size_t len,
-                        const json_t *code_dic, const json_t *pb_map);
+pc_buf_t pc_msg_encode_code(uint32_t id, pc_msg_type type,
+                            int route_code, pc_buf_t msg);
+
+pc__msg_raw_t *pc_msg_decode(const char *data, size_t len);
+
+void pc__raw_msg_destroy(pc__msg_raw_t *msg);
 
 void pc_msg_destroy(pc_msg_t *msg);
 
@@ -59,10 +62,29 @@ pc_buf_t pc__json_encode(const json_t *msg);
 
 json_t *pc__json_decode(const char *data, size_t offset, size_t len);
 
-pc_buf_t pc__pb_encode(const char *route, const json_t *msg, json_t *pb);
+/**
+ * Do protobuf encode for message. The pc_buf_t returned contains the encode
+ * result in buf.base and the size of the data in buf.len which should be
+ * positive and should be -1 stand for error. And if success, the buf.base MUST
+ * be released by free().
+ *
+ * @param  msg    json message to be encoded
+ * @param  pb_def protobuf definition for the message
+ * @return        encode result
+ */
+pc_buf_t pc__pb_encode(const json_t *msg, const json_t *pb);
 
-json_t *pc__pb_decode(const char *data, size_t offset, size_t len, json_t *pb);
-
-json_t *pc__pb_get(const json_t *pb_map, const char *route);
+/**
+ * Do protobuf decode for the binary data. The return json_t object could be
+ * used as normal json_t object and call json_decref() to released.
+ *
+ * @param data    binary data to decode
+ * @param offset  offset of the data
+ * @param len     lenght of the data
+ * @param pb_def  protobuf definition for the data
+ * @return        decode result
+ */
+json_t *pc__pb_decode(const char *data, size_t offset, size_t len,
+                      const json_t *pb_def);
 
 #endif /* PC_MESSAGE_H */

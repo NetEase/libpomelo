@@ -1,5 +1,5 @@
-#include "pb.h"
-#include "jansson.h"
+#include <pomelo-protobuf/pb.h>
+#include <jansson.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

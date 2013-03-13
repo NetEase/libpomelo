@@ -3,7 +3,7 @@
 #include <string.h>
 #include <uv.h>
 #include <jansson.h>
-#include "pb.h"
+#include <pomelo-protobuf/pb.h>
 
 #define WRITE_REQ_DATA  "Hello, world."
 #define NUM_WRITE_REQS  1

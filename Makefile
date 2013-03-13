@@ -13,6 +13,9 @@ OBJS += src/message.o
 OBJS += src/msg-json.o
 OBJS += src/msg-pb.o
 OBJS += src/common.o
+OBJS += src/pb-util.o
+OBJS += src/pb-encode.o
+OBJS += src/pb-decode.o
 #OBJS += jansson/*.o
 
 OBJS := $(addprefix $(OBJDIR)/,$(OBJS))
@@ -23,7 +26,9 @@ $(OBJDIR)/src/%.o: src/%.c include/pomelo-client.h \
 									 include/pomelo-protocol/package.h \
 									 include/pomelo-private/map.h \
 									 include/pomelo-private/listener.h \
-									 include/pomelo-private/common.h
+									 include/pomelo-private/common.h \
+									 include/pomelo-protobuf/pb.h \
+									 include/pomelo-protobuf/pb-util.h
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 

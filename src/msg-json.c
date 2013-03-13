@@ -22,6 +22,9 @@ json_t *pc__json_decode(const char *data, size_t offset, size_t len) {
 
   if(res == NULL) {
     fprintf(stderr, "Fail to decode json: %s\n", error.text);
+    char str[128];
+    memset(str, 0, 128);
+    memcpy(str, data + offset, len);
     return NULL;
   }
 
