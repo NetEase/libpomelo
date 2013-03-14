@@ -22,7 +22,7 @@ void on_request_cb(pc_request_t *req, int status, json_t *resp) {
   json_decref(msg);
   pc_request_destroy(req);
 
-  pc_disconnect(req->client, 0);
+  pc_disconnect(req->transport->client, 0);
 }
 
 void do_request(pc_client_t *client) {
@@ -62,18 +62,19 @@ void do_notify(pc_client_t *client) {
 void on_connected(pc_connect_t* req, int status) {
   if(status == -1) {
     fprintf(stderr, "Fail to connect to server\n");
+    goto error;
   } else {
     printf("Connection established.\n");
   }
 
-  pc_client_t *client = req->client;
-
-  // clean up
-  free(req->address);
-  free(req);
+  pc_client_t *client = req->transport->client;
 
   // send notify
   do_notify(client);
+
+error:
+  free(req->address);
+  free(req);
 }
 
 void on_hey(pc_client_t *client, const char *event, void *data) {

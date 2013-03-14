@@ -81,9 +81,21 @@ typedef enum {
   PC_NOTIFY
 } pc_req_type;
 
+typedef enum {
+  PC_TP_ST_INITED = 1,
+  PC_TP_ST_WORKING,
+  PC_TP_ST_CLOSED
+} pc_transport_state;
+
+typedef struct {
+  pc_client_t *client;
+  uv_tcp_t *socket;
+  pc_transport_state state;
+} pc_transport_t;
+
 #define PC_REQ_FIELDS                                                         \
   /* private */                                                               \
-  pc_client_t *client;                                                        \
+  pc_transport_t *transport;                                                  \
   pc_req_type type;                                                           \
   void *data;                                                                 \
 
@@ -115,7 +127,7 @@ struct pc_client_s {
   pc_client_state state;
   /* private */
   uv_loop_t *uv_loop;
-  uv_tcp_t *socket;
+  pc_transport_t *transport;
   pc_map_t *listeners;
   pc_map_t *requests;
   pc_pkg_parser_t *pkg_parser;

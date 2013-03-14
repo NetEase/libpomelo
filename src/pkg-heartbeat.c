@@ -16,6 +16,10 @@ int pc__heartbeat(pc_client_t *client) {
 }
 
 int pc__heartbeat_req(pc_client_t *client) {
+  if(PC_ST_WORKING == client->state) {
+    return -1;
+  }
+
   pc_buf_t buf = pc_pkg_encode(PC_PKG_HEARBEAT, NULL, 0);
   if(buf.len == -1) {
     fprintf(stderr, "Fail to encode heartbeat package.\n");

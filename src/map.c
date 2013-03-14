@@ -33,6 +33,8 @@ int pc_map_init(pc_map_t *map, pc_map_value_release release_value) {
   }
 
   if(hashtable_init(map->table)) {
+    free(map->table);
+    map->table = NULL;
     return -1;
   }
 

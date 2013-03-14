@@ -1,7 +1,7 @@
 #include <pomelo-client.h>
 
 int pc__binary_write(pc_client_t *client, const char *data, size_t len,
-                            uv_write_cb cb);
+                     uv_write_cb cb);
 int pc__handshake_req(pc_client_t *client);
 int pc__handshake_ack(pc_client_t *client);
 int pc__handshake_resp(pc_client_t *client,
@@ -101,10 +101,10 @@ int pc__handshake_resp(pc_client_t *client,
       client->code_to_route = json_object();
       const char *key;
       json_t *value;
-      char code_str[8];
+      char code_str[16];
       json_object_foreach(dict, key, value) {
-        memset(code_str, 0, 8);
-        sprintf(code_str, "%d", (int)json_integer_value(value));
+        memset(code_str, 0, 16);
+        sprintf(code_str, "%u", ((int)json_integer_value(value) & 0xff));
         json_object_set(client->code_to_route, code_str, json_string(key));
       }
     }
@@ -161,17 +161,24 @@ error:
 
 static void pc__handshake_req_cb(uv_write_t* req, int status) {
   void **data = (void **)req->data;
-  pc_client_t *client = (pc_client_t *)data[0];
+  pc_transport_t *transport = (pc_transport_t *)data[0];
+  pc_client_t *client = transport->client;
   char *base = (char *)data[1];
 
   free(base);
   free(data);
   free(req);
 
+  if(PC_TP_ST_WORKING != transport->state) {
+    fprintf(stderr, "Invalid transport state for handshake req cb: %d.\n",
+            transport->state);
+    return;
+  }
+
   if(status == -1) {
     fprintf(stderr, "Fail to write handshake request async, %s.\n",
             uv_err_name(uv_last_error(client->uv_loop)));
-    pc_disconnect(client, 1);
+    pc_disconnect(client, 0);
     if(client->conn_req) {
       pc_connect_t *conn_req = client->conn_req;
       client->conn_req = NULL;
@@ -182,24 +189,32 @@ static void pc__handshake_req_cb(uv_write_t* req, int status) {
 
 static void pc__handshake_ack_cb(uv_write_t* req, int status) {
   void **data = (void **)req->data;
-  pc_client_t *client = (pc_client_t *)data[0];
+  pc_transport_t *transport = (pc_transport_t *)data[0];
+  pc_client_t *client = transport->client;
   char *base = (char *)data[1];
 
   free(base);
   free(data);
   free(req);
 
+  if(PC_TP_ST_WORKING != transport->state) {
+    fprintf(stderr, "Invalid transport state for handshake ack cb: %d.\n",
+            transport->state);
+    return;
+  }
+
   if(status == -1) {
     fprintf(stderr, "Fail to write handshake ack async, %s.\n",
             uv_err_name(uv_last_error(client->uv_loop)));
-    pc_disconnect(client, 1);
+    pc_disconnect(client, 0);
   } else {
     client->state = PC_ST_WORKING;
-    if(client->conn_req) {
-      pc_connect_t *conn_req = client->conn_req;
-      client->conn_req = NULL;
-      conn_req->cb(conn_req, 0);
-    }
+  }
+
+  if(client->conn_req) {
+    pc_connect_t *conn_req = client->conn_req;
+    client->conn_req = NULL;
+    conn_req->cb(conn_req, status);
   }
 }
 

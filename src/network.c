@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <pomelo-protocol/message.h>
 #include <pomelo-private/common.h>
+#include <pomelo-private/transport.h>
 
 int pc__handshake_req(pc_client_t *client);
 
@@ -14,7 +15,7 @@ static void pc__on_tcp_read(uv_stream_t *handle, ssize_t nread, uv_buf_t buf);
 static void pc__on_tcp_connect(uv_connect_t *req, int status);
 static void pc__on_notify(uv_write_t* req, int status);
 static void pc__on_request(uv_write_t *req, int status);
-static int pc__async_write(pc_client_t *client, pc_tcp_req_t *req,
+static int pc__async_write(pc_transport_t *transport, pc_tcp_req_t *req,
                            const char *route, json_t *msg);
 static void pc__async_write_cb(uv_async_t* handle, int status);
 static void pc__notify(pc_notify_t *req, int status);
@@ -84,6 +85,8 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
   client->state = PC_ST_CONNECTING;
 
   uv_connect_t *connect_req = NULL;
+  pc_transport_t *transport = NULL;
+  void **data = NULL;
 
   connect_req = (uv_connect_t *)malloc(sizeof(uv_connect_t));
   if(connect_req == NULL) {
@@ -91,24 +94,31 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
     return -1;
   }
 
-  client->socket = (uv_tcp_t *)malloc(sizeof(uv_tcp_t));
-  if(client->socket == NULL) {
-    fprintf(stderr, "Fail to malloc for uv_tcp_t.\n");
+  data = (void **)malloc(sizeof(void *) * 2);
+
+  if(data == NULL) {
+    fprintf(stderr, "Fail to malloc for data array in pc_connect.\n");
     goto error;
   }
-  uv_tcp_init(client->uv_loop, client->socket);
+
+  transport = pc_transport_new(client);
+  if(transport == NULL) {
+    goto error;
+  }
 
   client->handshake_opts = handshake_opts;
   if(client->handshake_opts) {
     json_incref(client->handshake_opts);
   }
   client->conn_req = req;
-  req->client = client;
+  req->transport = transport;
   req->cb = cb;
-  connect_req->data = (void *)req;
+  data[0] = transport;
+  data[1] = req;
+  connect_req->data = (void *)data;
 
-  if(uv_tcp_connect(connect_req, client->socket,
-                           *req->address, pc__on_tcp_connect)) {
+  if(uv_tcp_connect(connect_req, transport->socket,
+                    *req->address, pc__on_tcp_connect)) {
     fprintf(stderr, "Fail to connect to server.");
     goto error;
   }
@@ -116,13 +126,9 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
   return 0;
 
 error:
-  if(client->socket) {
-    free(client->socket);
-    client->socket = NULL;
-  }
-  if(connect_req) {
-    free(connect_req);
-  }
+  if(data) free(data);
+  if(transport) pc_transport_destroy(transport);
+  if(connect_req) free(connect_req);
 
   return -1;
 }
@@ -150,9 +156,13 @@ void pc_request_destroy(pc_request_t *req) {
 
 int pc_request(pc_client_t *client, pc_request_t *req, const char *route,
                json_t *msg, pc_request_cb cb) {
+  if(PC_ST_WORKING != client->state) {
+    fprintf(stderr, "Invalid client state to send request: %d\n", client->state);
+    return -1;
+  }
   req->cb = cb;
   req->id = ++pc__req_id;
-  return pc__async_write(client, (pc_tcp_req_t *)req, route, msg);
+  return pc__async_write(client->transport, (pc_tcp_req_t *)req, route, msg);
 }
 
 /**
@@ -183,8 +193,13 @@ void pc_notify_destroy(pc_notify_t *req) {
  */
 int pc_notify(pc_client_t *client, pc_notify_t *req, const char *route,
               json_t *msg, pc_notify_cb cb) {
+  if(PC_ST_WORKING != client->state) {
+    fprintf(stderr, "Invalid client state to send notify: %d\n", client->state);
+    return -1;
+  }
+
   req->cb = cb;
-  return pc__async_write(client, (pc_tcp_req_t *)req, route, msg);
+  return pc__async_write(client->transport, (pc_tcp_req_t *)req, route, msg);
 }
 
 static void pc__request(pc_request_t *req, int status) {
@@ -193,17 +208,19 @@ static void pc__request(pc_request_t *req, int status) {
     return;
   }
 
-  pc_client_t *client = req->client;
-  // check client state again
-  if(client->state != PC_ST_WORKING) {
-    fprintf(stderr, "Fail to request for Pomelo client not connected.\n");
+  pc_transport_t *transport = req->transport;
+
+  // check transport state again
+  if(PC_TP_ST_WORKING != transport->state) {
+    fprintf(stderr, "Fail to request for transport not working.\n");
     req->cb(req, status, NULL);
     return;
   }
 
+  pc_client_t *client = transport->client;
   pc_buf_t msg_buf, pkg_buf;
   uv_write_t * write_req = NULL;
-  void** data = NULL;
+  void **data = NULL;
 
   memset(&msg_buf, 0, sizeof(pc_buf_t));
   memset(&pkg_buf, 0, sizeof(pc_buf_t));
@@ -241,7 +258,7 @@ static void pc__request(pc_request_t *req, int status) {
   data[1] = pkg_buf.base;
   write_req->data = (void *)data;
 
-  int res = uv_write(write_req, (uv_stream_t *)client->socket,
+  int res = uv_write(write_req, (uv_stream_t *)client->transport->socket,
                      (uv_buf_t *)&pkg_buf, 1, pc__on_request);
 
   if(res == -1) {
@@ -276,14 +293,16 @@ static void pc__notify(pc_notify_t *req, int status) {
     return;
   }
 
-  pc_client_t *client = req->client;
+  pc_transport_t *transport = req->transport;
+
   // check client state again
-  if(client->state != PC_ST_WORKING) {
-    fprintf(stderr, "Fail to notify for Pomelo client not connected.\n");
+  if(PC_TP_ST_WORKING != transport->state) {
+    fprintf(stderr, "Fail to notify for transport not working.\n");
     req->cb(req, status);
     return;
   }
 
+  pc_client_t *client = transport->client;
   pc_buf_t msg_buf;
   pc_buf_t pkg_buf;
   memset(&msg_buf, 0, sizeof(pc_buf_t));
@@ -325,7 +344,7 @@ static void pc__notify(pc_notify_t *req, int status) {
   data[1] = pkg_buf.base;
   write_req->data = (void *)data;
 
-  int res = uv_write(write_req, (uv_stream_t *)client->socket,
+  int res = uv_write(write_req, (uv_stream_t *)client->transport->socket,
                      (uv_buf_t *)&pkg_buf, 1, pc__on_notify);
 
   if(res == -1) {
@@ -392,60 +411,68 @@ error:
  * Tcp connection established callback.
  */
 static void pc__on_tcp_connect(uv_connect_t *req, int status) {
-  pc_connect_t *conn_req = (pc_connect_t *)req->data;
-  pc_client_t *client = conn_req->client;
+  void **data = (void **)req->data;
+  pc_transport_t *transport = (pc_transport_t *)data[0];
+  pc_connect_t *conn_req = (pc_connect_t *)data[1];
+  pc_client_t *client = transport->client;
 
-  if (status == -1) {
-    fprintf(stderr, "Connect failed error %s\n",
-            uv_err_name(uv_last_error(req->handle->loop)));
-    conn_req->cb(conn_req, status);
-    goto error;
-  }
+  free(req);
+  free(data);
 
   if(PC_ST_CONNECTING != client->state) {
     fprintf(stderr, "Invalid client state when tcp connected: %d.\n",
             client->state);
+    client->conn_req = NULL;
     conn_req->cb(conn_req, -1);
+    return;
+  }
+
+  if(status == -1) {
+    fprintf(stderr, "Connect failed error %s\n",
+            uv_err_name(uv_last_error(req->handle->loop)));
     goto error;
   }
 
-  client->socket->data = (void *)client;
+  client->transport = transport;
 
   // start the tcp reading until disconnect
-  if(uv_read_start((uv_stream_t*)client->socket, pc__alloc_buffer,
-                   pc__on_tcp_read)) {
+  if(uv_read_start((uv_stream_t*)transport->socket, pc__alloc_buffer,
+                   pc_tp_on_tcp_read)) {
     fprintf(stderr, "Fail to start reading server %s\n",
             uv_err_name(uv_last_error(client->uv_loop)));
-    pc_disconnect(client, 1);
-    conn_req->cb(conn_req, -1);
     goto error;
   }
 
   client->state = PC_ST_CONNECTED;
+  pc_transport_start(transport);
 
   if(pc__handshake_req(client)) {
-    fprintf(stderr, "Fail to send handshake request.\n");
-    pc_disconnect(client, 1);
-    conn_req->cb(conn_req, -1);
     goto error;
   }
 
+  return;
+
 error:
-  free(req);
+  client->conn_req = NULL;
+  pc_disconnect(client, 0);
+  conn_req->cb(conn_req, -1);
 }
 
 // Async write for pc_notify or pc_request may be invoked in other threads.
-static int pc__async_write(pc_client_t *client, pc_tcp_req_t *req,
+static int pc__async_write(pc_transport_t *transport, pc_tcp_req_t *req,
                            const char *route, json_t *msg) {
-  if(client->state != PC_ST_WORKING) {
-    fprintf(stderr, "Pomelo client not working: %d.\n", client->state);
+  if(PC_TP_ST_WORKING != transport->state) {
+    fprintf(stderr, "Fail to asyn write for transport not working: %d.\n",
+            transport->state);
     return -1;
   }
+
   if(!req || !route /*|| !msg*/) {
     fprintf(stderr, "Invalid tcp request.\n");
     return -1;
   }
 
+  pc_client_t *client = transport->client;
   size_t route_len = strlen(route) + 1;
   const char *cpy_route = NULL;
   uv_async_t *async_req = NULL;
@@ -459,7 +486,7 @@ static int pc__async_write(pc_client_t *client, pc_tcp_req_t *req,
   memcpy((void *)cpy_route, route, route_len);
 
   int async_inited = 0;
-  req->client = client;
+  req->transport = transport;
   req->route = cpy_route;
   req->msg = msg;
 
@@ -521,12 +548,19 @@ static void pc__async_write_cb(uv_async_t* req, int status) {
 static void pc__on_request(uv_write_t *req, int status) {
   void **data = (void **)req->data;
   pc_request_t *request_req = (pc_request_t *)data[0];
-  pc_client_t *client = request_req->client;
+  pc_transport_t *transport = request_req->transport;
+  pc_client_t *client = transport->client;
   char *base = (char *)data[1];
 
   free(base);
   free(req);
   free(data);
+
+  if(PC_TP_ST_WORKING != transport->state) {
+    fprintf(stderr, "Request error for transport not working.\n");
+    request_req->cb(request_req, -1, NULL);
+    return;
+  }
 
   if(status == -1) {
     fprintf(stderr, "Request error %s\n",
@@ -539,8 +573,8 @@ static void pc__on_request(uv_write_t *req, int status) {
     pc_map_del(client->requests, req_id_str);
 
     request_req->cb(request_req, status, NULL);
-    return;
   }
+
 }
 
 /**
@@ -549,12 +583,19 @@ static void pc__on_request(uv_write_t *req, int status) {
 static void pc__on_notify(uv_write_t *req, int status) {
   void **data = (void **)req->data;
   pc_notify_t *notify_req = (pc_notify_t *)data[0];
-  pc_client_t *client = (pc_client_t *)notify_req->client;
+  pc_transport_t *transport = notify_req->transport;
+  pc_client_t *client = transport->client;
   char *base = (char *)data[1];
 
   free(base);
   free(req);
   free(data);
+
+  if(PC_TP_ST_WORKING != transport->state) {
+    fprintf(stderr, "Notify error for transport not working.\n");
+    notify_req->cb(notify_req, -1);
+    return;
+  }
 
   if(status == -1) {
     fprintf(stderr, "Notify error %s\n",
@@ -566,6 +607,12 @@ static void pc__on_notify(uv_write_t *req, int status) {
 
 int pc__binary_write(pc_client_t *client, const char *data, size_t len,
                             uv_write_cb cb) {
+  if(PC_ST_CONNECTED != client->state && PC_ST_WORKING != client->state) {
+    fprintf(stderr, "Fail to write binary for invalid client state: %d.\n",
+            client->state);
+    return -1;
+  }
+
   uv_write_t *req = NULL;
   void **attach = NULL;
 
@@ -583,7 +630,7 @@ int pc__binary_write(pc_client_t *client, const char *data, size_t len,
     goto error;
   }
 
-  attach[0] = client;
+  attach[0] = client->transport;
   attach[1] = (void *)data;
   req->data = (void *)attach;
 
@@ -592,7 +639,7 @@ int pc__binary_write(pc_client_t *client, const char *data, size_t len,
     .len = len
   };
 
-  if(uv_write(req, (uv_stream_t *)client->socket, &buf, 1, cb)) {
+  if(uv_write(req, (uv_stream_t *)client->transport->socket, &buf, 1, cb)) {
     fprintf(stderr, "Fail to write handshake ack pakcage, %s\n",
             uv_err_name(uv_last_error(req->handle->loop)));
     goto error;

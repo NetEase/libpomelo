@@ -6,13 +6,12 @@
 #include <pomelo-private/listener.h>
 #include <pomelo-protocol/message.h>
 #include <pomelo-private/common.h>
+#include <pomelo-private/transport.h>
 
 static uv_loop_t *global_uv_loop = NULL;
 
 void pc__client_init(pc_client_t *client);
 void pc_emit_event(pc_client_t *client, const char *event, void *data);
-int pc__binary_write(pc_client_t *client, const char *data, size_t len,
-                     uv_write_cb cb) ;
 static void pc__pkg_cb(pc_pkg_type type, const char *data, size_t len,
                        void *attach);
 int pc__handshake_resp(pc_client_t *client, const char *data, size_t len);
@@ -58,7 +57,6 @@ pc_client_t *pc_client_new() {
 }
 
 void pc__client_init(pc_client_t *client) {
-
   client->listeners = pc_map_new(pc__release_listeners);
   if(client->listeners == NULL) {
     fprintf(stderr, "Fail to init client->listeners.\n");
@@ -161,8 +159,37 @@ void pc_client_destroy(pc_client_t *client) {
 }
 
 void pc__client_reset(pc_client_t *client) {
-  pc__client_clear(client);
-  pc__client_init(client);
+  pc_map_clear(client->listeners);
+  pc_map_clear(client->requests);
+
+  pc_pkg_parser_reset(client->pkg_parser);
+
+  uv_timer_stop(client->heartbeat_timer);
+  uv_timer_stop(client->timeout_timer);
+
+  if(client->handshake_opts) {
+    json_decref(client->handshake_opts);
+    client->handshake_opts = NULL;
+  }
+
+  if(client->route_to_code) {
+    json_decref(client->route_to_code);
+    client->route_to_code = NULL;
+  }
+  if(client->code_to_route) {
+    json_decref(client->code_to_route);
+    client->code_to_route = NULL;
+  }
+  if(client->server_protos) {
+    json_decref(client->server_protos);
+    client->server_protos = NULL;
+  }
+  if(client->client_protos) {
+    json_decref(client->client_protos);
+    client->client_protos = NULL;
+  }
+
+  client->state = PC_ST_INITED;
 }
 
 void pc_disconnect(pc_client_t *client, int reset) {
@@ -170,12 +197,12 @@ void pc_disconnect(pc_client_t *client, int reset) {
     return;
   }
 
-  client->state = PC_ST_INITED;
+  client->state = PC_ST_CLOSED;
 
   pc_emit_event(client, PC_EVENT_DISCONNECT, NULL);
 
-  uv_close((uv_handle_t *)client->socket, pc__handle_close_cb);
-  client->socket = NULL;
+  pc_transport_destroy(client->transport);
+  client->transport = NULL;
 
   if(reset) {
     pc__client_reset(client);
@@ -287,6 +314,7 @@ static void pc__pkg_cb(pc_pkg_type type, const char *data, size_t len,
     break;
     default:
       fprintf(stderr, "Unknown Pomelo package type: %d.\n", type);
+      pc_disconnect(client, 1);
     break;
   }
 

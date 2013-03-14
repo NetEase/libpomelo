@@ -16,6 +16,7 @@ OBJS += src/common.o
 OBJS += src/pb-util.o
 OBJS += src/pb-encode.o
 OBJS += src/pb-decode.o
+OBJS += src/transport.o
 #OBJS += jansson/*.o
 
 OBJS := $(addprefix $(OBJDIR)/,$(OBJS))
@@ -28,7 +29,8 @@ $(OBJDIR)/src/%.o: src/%.c include/pomelo-client.h \
 									 include/pomelo-private/listener.h \
 									 include/pomelo-private/common.h \
 									 include/pomelo-protobuf/pb.h \
-									 include/pomelo-protobuf/pb-util.h
+									 include/pomelo-protobuf/pb-util.h\
+									 include/pomelo-private/transport.h
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -54,6 +56,9 @@ pkg: test/pkg.c libpomelo.a
 
 msg: test/msg.c libpomelo.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o test/msg test/msg.c
+
+jtest: test/jtest.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o test/jtest test/jtest.c
 
 hashtest: test/hashtest.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o test/hashtest test/hashtest.c
