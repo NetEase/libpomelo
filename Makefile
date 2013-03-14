@@ -60,6 +60,18 @@ msg: test/msg.c libpomelo.a
 jtest: test/jtest.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o test/jtest test/jtest.c
 
+thread: test/thread.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o test/thread test/thread.c
+
+client: test/client.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o test/client test/client.c
+
+reconn: test/reconn.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o test/reconn test/reconn.c
+
+stop: test/stop.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o test/stop test/stop.c
+
 hashtest: test/hashtest.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o test/hashtest test/hashtest.c
 

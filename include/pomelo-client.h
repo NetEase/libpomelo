@@ -59,7 +59,6 @@ typedef void (*pc_msg_parse_done_cb)(pc_client_t *, pc_msg_t *);
 typedef pc_buf_t (*pc_msg_encode_cb)(pc_client_t *, uint32_t reqId,
                                      const char* route, json_t *msg);
 typedef void (*pc_msg_encode_done_cb)(pc_client_t *, pc_buf_t buf);
-typedef void (*pc_disconnect_cb)(pc_client_t *client);
 
 /**
  * Pomelo client states.
@@ -95,6 +94,7 @@ typedef struct {
 
 #define PC_REQ_FIELDS                                                         \
   /* private */                                                               \
+  pc_client_t *client;                                                        \
   pc_transport_t *transport;                                                  \
   pc_req_type type;                                                           \
   void *data;                                                                 \
@@ -133,8 +133,6 @@ struct pc_client_s {
   pc_pkg_parser_t *pkg_parser;
   int heartbeat;
   int timeout;
-  uv_timer_t *heartbeat_timer;
-  uv_timer_t *timeout_timer;
   json_t *handshake_opts;
   pc_handshake_cb handshake_cb;
   pc_connect_t *conn_req;
@@ -146,6 +144,13 @@ struct pc_client_s {
   pc_msg_parse_done_cb parse_msg_done;
   pc_msg_encode_cb encode_msg;
   pc_msg_encode_done_cb encode_msg_done;
+  uv_timer_t heartbeat_timer;
+  uv_timer_t timeout_timer;
+  uv_async_t close_async;
+  uv_mutex_t mutex;
+  uv_cond_t cond;
+  uv_mutex_t listener_mutex;
+  uv_thread_t worker;
 };
 
 /**
@@ -195,14 +200,6 @@ struct pc_msg_s {
  * @return Pomelo client instance
  */
 pc_client_t *pc_client_new();
-
-/**
- * Disconnect the client connection if necessary and release the inner resource
- * of pomelo client instance.
- *
- * @param client Pomelo client instance.
- */
-void pc_client_destroy(pc_client_t *client);
 
 /**
  * Create and initiate connect request instance.
@@ -300,6 +297,14 @@ int pc_run(pc_client_t *client);
 
 int pc_add_listener(pc_client_t *client, const char *event,
                     pc_event_cb event_cb);
+
+int pc_client_connect(pc_client_t *client, struct sockaddr_in *addr);
+
+void pc_client_destroy(pc_client_t *client);
+
+int pc_client_join(pc_client_t *client);
+
+void pc_client_stop(pc_client_t *client);
 
 /* Don't export the private CPP symbols. */
 #undef PC_TCP_REQ_FIELDS

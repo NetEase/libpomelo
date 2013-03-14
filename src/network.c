@@ -111,6 +111,7 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
     json_incref(client->handshake_opts);
   }
   client->conn_req = req;
+  req->client = client;
   req->transport = transport;
   req->cb = cb;
   data[0] = transport;
@@ -373,41 +374,6 @@ static uv_buf_t pc__alloc_buffer(uv_handle_t *handle, size_t suggested_size) {
 }
 
 /**
- * Tcp data reached callback.
- */
-static void pc__on_tcp_read(uv_stream_t *socket, ssize_t nread, uv_buf_t buf) {
-  pc_client_t *client = (pc_client_t *)socket->data;
-  if(PC_ST_CONNECTED != client->state && PC_ST_WORKING != client->state) {
-    fprintf(stderr, "Discard read data for client has stop work: %d\n",
-            client->state);
-    goto error;
-  }
-  if (nread == -1) {
-    if (uv_last_error(socket->loop).code != UV_EOF)
-      fprintf(stderr, "Read error %s\n",
-              uv_err_name(uv_last_error(socket->loop)));
-    pc_disconnect((pc_client_t *)socket->data, 1);
-    goto error;
-  }
-
-  if(nread == 0) {
-    // read noting
-    free(buf.base);
-    return;
-  }
-
-  if(pc_pkg_parser_feed(client->pkg_parser, buf.base, nread)) {
-    fprintf(stderr, "Fail to process data from server.\n");
-    pc_disconnect(client, 1);
-  }
-
-error:
-  if(buf.len != -1) {
-    free(buf.base);
-  }
-}
-
-/**
  * Tcp connection established callback.
  */
 static void pc__on_tcp_connect(uv_connect_t *req, int status) {
@@ -454,7 +420,7 @@ static void pc__on_tcp_connect(uv_connect_t *req, int status) {
 
 error:
   client->conn_req = NULL;
-  pc_disconnect(client, 0);
+  pc_client_stop(client);
   conn_req->cb(conn_req, -1);
 }
 
@@ -486,6 +452,7 @@ static int pc__async_write(pc_transport_t *transport, pc_tcp_req_t *req,
   memcpy((void *)cpy_route, route, route_len);
 
   int async_inited = 0;
+  req->client = client;
   req->transport = transport;
   req->route = cpy_route;
   req->msg = msg;

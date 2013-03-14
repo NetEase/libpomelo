@@ -71,7 +71,7 @@ int pc_transport_start(pc_transport_t *transport) {
 void pc_client_on_tcp_read(pc_client_t *client, const char *data, size_t len) {
   if(pc_pkg_parser_feed(client->pkg_parser, data, len)) {
     fprintf(stderr, "Fail to process data from server.\n");
-    pc_disconnect(client, 1);
+    pc_client_stop(client);
   }
 }
 
@@ -90,7 +90,7 @@ void pc_tp_on_tcp_read(uv_stream_t *socket, ssize_t nread, uv_buf_t buf) {
     if (uv_last_error(socket->loop).code != UV_EOF)
       fprintf(stderr, "Read error %s\n",
               uv_err_name(uv_last_error(socket->loop)));
-    pc_disconnect(transport->client, 0);
+    pc_client_stop(transport->client);
     goto error;
   }
 

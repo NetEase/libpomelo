@@ -1,11 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
-#include <jansson.h>
 #include <pomelo-client.h>
 #include <pomelo-private/listener.h>
 #include <pomelo-protocol/message.h>
-#include <pomelo-private/common.h>
 #include <pomelo-private/transport.h>
 
 static uv_loop_t *global_uv_loop = NULL;
@@ -20,14 +18,17 @@ int pc__data(pc_client_t *client, const char *data, size_t len);
 void pc__heartbeat_cb(uv_timer_t* heartbeat_timer, int status);
 void pc__timeout_cb(uv_timer_t* timeout_timer, int status);
 void pc__process_response(pc_client_t *client, pc_msg_t *msg);
-
 pc_msg_t *pc__default_msg_parse_cb(pc_client_t *client,
     const char *data, int len);
 void pc__default_msg_parse_done_cb(pc_client_t *client, pc_msg_t *msg);
-
 pc_buf_t pc__default_msg_encode_cb(pc_client_t *client, uint32_t reqId,
     const char *route, json_t *msg);
 void pc__default_msg_encode_done_cb(pc_client_t * client, pc_buf_t buf);
+void pc__close_async_cb(uv_async_t *handle, int status);
+void pc__cond_wait(pc_client_t *client, uint64_t timeout);
+void pc__cond_broadcast(pc_client_t *client);
+void pc__client_connected_cb(pc_connect_t* req, int status);
+void pc__worker(void *arg);
 
 static inline const char *pc__resolve_dictionary(pc_client_t *client,
     uint16_t code);
@@ -75,29 +76,25 @@ void pc__client_init(pc_client_t *client) {
     abort();
   }
 
-  client->heartbeat_timer = (uv_timer_t *)malloc(sizeof(uv_timer_t));
-  if(client->heartbeat_timer == NULL) {
-    fprintf(stderr, "Fail to malloc for heartbeat timer.\n");
-    abort();
-  }
-  if(uv_timer_init(client->uv_loop, client->heartbeat_timer)) {
+  if(uv_timer_init(client->uv_loop, &client->heartbeat_timer)) {
     fprintf(stderr, "Fail to init client->heartbeat_timer.\n");
     abort();
   }
-  client->heartbeat_timer->timer_cb = pc__heartbeat_cb;
-  client->heartbeat_timer->data = client;
+  client->heartbeat_timer.timer_cb = pc__heartbeat_cb;
+  client->heartbeat_timer.data = client;
 
-  client->timeout_timer = (uv_timer_t *)malloc(sizeof(uv_timer_t));
-  if(client->heartbeat_timer == NULL) {
-    fprintf(stderr, "Fail to malloc for timeoute timer.\n");
-    abort();
-  }
-  if(uv_timer_init(client->uv_loop, client->timeout_timer)) {
+  if(uv_timer_init(client->uv_loop, &client->timeout_timer)) {
     fprintf(stderr, "Fail to init client->timeout_timer.\n");
     abort();
   }
-  client->timeout_timer->timer_cb = pc__timeout_cb;
-  client->timeout_timer->data = client;
+  client->timeout_timer.timer_cb = pc__timeout_cb;
+  client->timeout_timer.data = client;
+
+  uv_async_init(client->uv_loop, &client->close_async, pc__close_async_cb);
+  client->close_async.data = client;
+  uv_mutex_init(&client->mutex);
+  uv_cond_init(&client->cond);
+  uv_mutex_init(&client->listener_mutex);
 
   // init package parser
   client->parse_msg = pc__default_msg_parse_cb;
@@ -114,20 +111,25 @@ void pc__client_init(pc_client_t *client) {
  * Clear all inner resource of Pomelo client
  */
 void pc__client_clear(pc_client_t *client) {
-  pc_map_destroy(client->listeners);
-  client->listeners = NULL;
-  pc_map_destroy(client->requests);
-  client->requests = NULL;
+  if(client->uv_loop) {
+    free(client->uv_loop);
+    client->uv_loop = NULL;
+  }
 
-  pc_pkg_parser_destroy(client->pkg_parser);
-  client->pkg_parser = NULL;
+  if(client->listeners) {
+    pc_map_destroy(client->listeners);
+    client->listeners = NULL;
+  }
 
-  uv_close((uv_handle_t *)client->heartbeat_timer, pc__handle_close_cb);
-  client->heartbeat_timer = NULL;
-  client->heartbeat = 0;
-  uv_close((uv_handle_t *)client->timeout_timer, pc__handle_close_cb);
-  client->timeout_timer = NULL;
-  client->timeout = 0;
+  if(client->requests) {
+    pc_map_destroy(client->requests);
+    client->requests = NULL;
+  }
+
+  if(client->pkg_parser) {
+    pc_pkg_parser_destroy(client->pkg_parser);
+    client->pkg_parser = NULL;
+  }
 
   if(client->handshake_opts) {
     json_decref(client->handshake_opts);
@@ -152,67 +154,100 @@ void pc__client_clear(pc_client_t *client) {
   }
 }
 
-void pc_client_destroy(pc_client_t *client) {
-  pc_disconnect(client, 0);
-  pc__client_clear(client);
-  free(client);
-}
-
-void pc__client_reset(pc_client_t *client) {
-  pc_map_clear(client->listeners);
-  pc_map_clear(client->requests);
-
-  pc_pkg_parser_reset(client->pkg_parser);
-
-  uv_timer_stop(client->heartbeat_timer);
-  uv_timer_stop(client->timeout_timer);
-
-  if(client->handshake_opts) {
-    json_decref(client->handshake_opts);
-    client->handshake_opts = NULL;
+void pc_client_stop(pc_client_t *client) {
+  if(PC_ST_INITED == client->state || PC_ST_CONNECTING == client->state) {
+    client->state = PC_ST_CLOSED;
+    return;
   }
 
-  if(client->route_to_code) {
-    json_decref(client->route_to_code);
-    client->route_to_code = NULL;
-  }
-  if(client->code_to_route) {
-    json_decref(client->code_to_route);
-    client->code_to_route = NULL;
-  }
-  if(client->server_protos) {
-    json_decref(client->server_protos);
-    client->server_protos = NULL;
-  }
-  if(client->client_protos) {
-    json_decref(client->client_protos);
-    client->client_protos = NULL;
-  }
-
-  client->state = PC_ST_INITED;
-}
-
-void pc_disconnect(pc_client_t *client, int reset) {
-  if(PC_ST_CONNECTED != client->state && PC_ST_WORKING != client->state) {
+  if(PC_TP_ST_CLOSED == client->state) {
     return;
   }
 
   client->state = PC_ST_CLOSED;
-
-  pc_emit_event(client, PC_EVENT_DISCONNECT, NULL);
-
-  pc_transport_destroy(client->transport);
-  client->transport = NULL;
-
-  if(reset) {
-    pc__client_reset(client);
+  if(client->transport) {
+    pc_transport_destroy(client->transport);
+    client->transport = NULL;
   }
+
+  uv_close((uv_handle_t *)&client->heartbeat_timer, NULL);
+  uv_close((uv_handle_t *)&client->timeout_timer, NULL);
+  uv_close((uv_handle_t *)&client->close_async, NULL);
+}
+
+void pc_client_destroy(pc_client_t *client) {
+  if(PC_ST_INITED == client->state) {
+    pc__client_clear(client);
+    free(client);
+    return;
+  }
+
+  if(PC_ST_CLOSED == client->state) {
+    pc__client_clear(client);
+    free(client);
+    return;
+  }
+
+  // 1. asyn worker thread
+  // 2. wait cond until signal or timeout
+  // 3. free client
+  uv_async_send(&client->close_async);
+
+  pc__cond_wait(client, 3000);
+
+  if(PC_ST_CLOSED != client->state) {
+    pc_client_stop(client);
+    pc__client_clear(client);
+  }
+  free(client);
+}
+
+int pc_client_join(pc_client_t *client) {
+  if(PC_ST_WORKING != client->state) {
+    fprintf(stderr, "Fail to join client for invalid state: %d.\n",
+            client->state);
+    return -1;
+  }
+  return uv_thread_join(&client->worker);
+}
+
+int pc_client_connect(pc_client_t *client, struct sockaddr_in *addr) {
+  pc_connect_t *conn_req = pc_connect_req_new(addr);
+
+  if(conn_req == NULL) {
+    fprintf(stderr, "Fail to malloc pc_connect_t.\n");
+    goto error;
+  }
+
+  if(pc_connect(client, conn_req, NULL, pc__client_connected_cb)) {
+    fprintf(stderr, "Fail to connect to server.\n");
+    goto error;
+  }
+
+  // 1. start work thread
+  // 2. wait connect result
+
+  uv_thread_create(&client->worker, pc__worker, client);
+
+  // TODO should set a timeout?
+  pc__cond_wait(client, 0);
+
+  pc_connect_req_destroy(conn_req);
+
+  if(PC_ST_WORKING != client->state) {
+    return -1;
+  }
+
+  return 0;
+error:
+  if(conn_req) pc_connect_req_destroy(conn_req);
+  return -1;
 }
 
 int pc_add_listener(pc_client_t *client, const char *event,
                     pc_event_cb event_cb) {
-  if(client->state < PC_ST_INITED) {
-    fprintf(stderr, "Pomelo client not init.\n");
+  if(PC_ST_CLOSED == client->state) {
+    fprintf(stderr, "Pomelo client has closed.\n");
     return -1;
   }
 
@@ -223,6 +258,7 @@ int pc_add_listener(pc_client_t *client, const char *event,
   }
   listener->cb = event_cb;
 
+  uv_mutex_lock(&client->mutex);
   ngx_queue_t *head = pc_map_get(client->listeners, event);
 
   if(head == NULL) {
@@ -239,11 +275,13 @@ int pc_add_listener(pc_client_t *client, const char *event,
   }
 
   ngx_queue_insert_tail(head, &listener->queue);
+  uv_mutex_unlock(&client->mutex);
 
   return 0;
 }
 
 void pc_remove_listener(pc_client_t *client, const char *event, pc_event_cb cb) {
+  uv_mutex_lock(&client->mutex);
   ngx_queue_t *head = (ngx_queue_t *)pc_map_get(client->listeners, event);
   if(head == NULL) {
     return;
@@ -265,9 +303,11 @@ void pc_remove_listener(pc_client_t *client, const char *event, pc_event_cb cb) 
     pc_map_del(client->listeners, event);
     free(head);
   }
+  uv_mutex_unlock(&client->mutex);
 }
 
 void pc_emit_event(pc_client_t *client, const char *event, void *data) {
+  uv_mutex_lock(&client->mutex);
   ngx_queue_t *head = (ngx_queue_t *)pc_map_get(client->listeners, event);
   if(head == NULL) {
     return;
@@ -280,6 +320,7 @@ void pc_emit_event(pc_client_t *client, const char *event, void *data) {
     listener = ngx_queue_data(item, pc_listener_t, queue);
     listener->cb(client, event, data);
   }
+  uv_mutex_unlock(&client->mutex);
 }
 
 int pc_run(pc_client_t *client) {
@@ -314,12 +355,12 @@ static void pc__pkg_cb(pc_pkg_type type, const char *data, size_t len,
     break;
     default:
       fprintf(stderr, "Unknown Pomelo package type: %d.\n", type);
-      pc_disconnect(client, 1);
+      status = -1;
     break;
   }
 
   if(status == -1) {
-    pc_disconnect(client, 1);
+    pc_client_stop(client);
   }
 }
 
@@ -552,4 +593,46 @@ void pc__release_requests(pc_map_t *map, const char* key, void *value) {
 
   pc_request_t *req = (pc_request_t *)value;
   req->cb(req, -1, NULL);
+}
+
+void pc__close_async_cb(uv_async_t *handle, int status) {
+  pc_client_t *client = (pc_client_t *)handle->data;
+  pc_client_stop(client);
+  pc__client_clear(client);
+}
+
+void pc__cond_wait(pc_client_t *client, uint64_t timeout) {
+  uv_mutex_lock(&client->mutex);
+  if(timeout > 0) {
+    uv_cond_timedwait(&client->cond, &client->mutex, 3000);
+  } else {
+    uv_cond_wait(&client->cond, &client->mutex);
+  }
+  uv_mutex_unlock(&client->mutex);
+}
+
+void pc__cond_broadcast(pc_client_t *client) {
+  uv_mutex_lock(&client->mutex);
+  uv_cond_broadcast(&client->cond);
+  uv_mutex_unlock(&client->mutex);
+}
+
+void pc__client_connected_cb(pc_connect_t* req, int status) {
+  if(status == -1) {
+    pc_client_stop(req->client);
+  }
+
+  pc__cond_broadcast(req->client);
+}
+
+void pc__worker(void *arg) {
+  pc_client_t *client = (pc_client_t *)arg;
+
+  pc_run(client);
+
+  // make sure the state
+  client->state = PC_ST_CLOSED;
+
+  pc_emit_event(client, PC_EVENT_DISCONNECT, NULL);
+  pc__cond_broadcast(client);
 }

@@ -86,8 +86,8 @@ int pc__handshake_resp(pc_client_t *client,
       if(hb > 0) {
         client->heartbeat = hb * 1000;
         client->timeout = client->heartbeat * PC_HEARTBEAT_TIMEOUT_FACTOR;
-        uv_timer_set_repeat(client->heartbeat_timer, client->heartbeat);
-        uv_timer_set_repeat(client->timeout_timer, client->timeout);
+        uv_timer_set_repeat(&client->heartbeat_timer, client->heartbeat);
+        uv_timer_set_repeat(&client->timeout_timer, client->timeout);
       } else {
         client->heartbeat = -1;
         client->timeout = -1;
@@ -178,7 +178,7 @@ static void pc__handshake_req_cb(uv_write_t* req, int status) {
   if(status == -1) {
     fprintf(stderr, "Fail to write handshake request async, %s.\n",
             uv_err_name(uv_last_error(client->uv_loop)));
-    pc_disconnect(client, 0);
+    pc_client_stop(client);
     if(client->conn_req) {
       pc_connect_t *conn_req = client->conn_req;
       client->conn_req = NULL;
@@ -206,7 +206,7 @@ static void pc__handshake_ack_cb(uv_write_t* req, int status) {
   if(status == -1) {
     fprintf(stderr, "Fail to write handshake ack async, %s.\n",
             uv_err_name(uv_last_error(client->uv_loop)));
-    pc_disconnect(client, 0);
+    pc_client_stop(client);
   } else {
     client->state = PC_ST_WORKING;
   }
@@ -216,22 +216,4 @@ static void pc__handshake_ack_cb(uv_write_t* req, int status) {
     client->conn_req = NULL;
     conn_req->cb(conn_req, status);
   }
-}
-
-static int pc__handshake_sys(pc_client_t *client, json_t *sys) {
-  json_int_t hb = json_integer_value(json_object_get(sys, "heartbeat"));
-  if(hb < 0) {
-    // no need heartbeat
-    client->heartbeat = -1;
-    client->timeout = -1;
-  } else {
-    client->heartbeat = hb > 0 ? hb : PC_DEFAULT_HEARTBEAT;
-    json_int_t to = json_integer_value(json_object_get(sys, "timeout"));
-    client->timeout = to > client->heartbeat ? to : PC_DEFAULT_TIMEOUT;
-  }
-
-  uv_timer_set_repeat(client->heartbeat_timer, client->heartbeat);
-  uv_timer_set_repeat(client->timeout_timer, client->timeout);
-
-  return 0;
 }

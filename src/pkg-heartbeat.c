@@ -10,13 +10,13 @@ int pc__binary_write(pc_client_t *client, const char *data, size_t len,
 static void pc__heartbeat_req_cb(uv_write_t* req, int status);
 
 int pc__heartbeat(pc_client_t *client) {
-  uv_timer_stop(client->timeout_timer);
-  uv_timer_again(client->heartbeat_timer);
+  uv_timer_stop(&client->timeout_timer);
+  uv_timer_again(&client->heartbeat_timer);
   return 0;
 }
 
 int pc__heartbeat_req(pc_client_t *client) {
-  if(PC_ST_WORKING == client->state) {
+  if(PC_ST_WORKING != client->state) {
     return -1;
   }
 
@@ -44,16 +44,16 @@ void pc__heartbeat_cb(uv_timer_t* heartbeat_timer, int status) {
   if(status == -1) {
     fprintf(stderr, "Pomelo heartbeat timer error, %s\n",
             uv_err_name(uv_last_error(heartbeat_timer->loop)));
-    pc_disconnect(client, 1);
+    pc_client_stop(client);
     return;
   }
 
   if(pc__heartbeat_req(client)) {
-    pc_disconnect(client, 1);
+    pc_client_stop(client);
     return;
   }
 
-  uv_timer_again(client->timeout_timer);
+  uv_timer_again(&client->timeout_timer);
 }
 
 void pc__timeout_cb(uv_timer_t* timeout_timer, int status) {
@@ -62,12 +62,10 @@ void pc__timeout_cb(uv_timer_t* timeout_timer, int status) {
   if(status == -1) {
     fprintf(stderr, "Pomelo timeout timer error, %s\n",
             uv_err_name(uv_last_error(timeout_timer->loop)));
-    pc_disconnect(client, 1);
-    return;
+  } else {
+    fprintf(stderr, "Pomelo client heartbeat timeout.\n");
   }
-
-  fprintf(stderr, "Pomelo client heartbeat timeout.\n");
-  pc_disconnect(client, 1);
+  pc_client_stop(client);
 }
 
 static void pc__heartbeat_req_cb(uv_write_t* req, int status) {
@@ -82,6 +80,6 @@ static void pc__heartbeat_req_cb(uv_write_t* req, int status) {
   if(status == -1) {
     fprintf(stderr, "Fail to write heartbeat async, %s.\n",
             uv_err_name(uv_last_error(client->uv_loop)));
-    pc_disconnect(client, 1);
+    pc_client_stop(client);
   }
 }
