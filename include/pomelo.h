@@ -22,16 +22,15 @@ extern "C" {
 # define PC_EXTERN /* nothing */
 #endif
 
-#include <uv.h>
-#include <jansson.h>
-#include <pomelo-private/map.h>
-#include <pomelo-protocol/package.h>
+#include "uv.h"
+#include "jansson.h"
+#include "pomelo-private/map.h"
+#include "pomelo-protocol/package.h"
 
 #define PC_TYPE "c"
 #define PC_VERSION "0.0.1"
 
 #define PC_EVENT_DISCONNECT "disconnect"
-#define MIN(X, Y) ((X) < (Y) ? (X) : (Y))
 
 #define PC_DEFAULT_HEARTBEAT 3000
 #define PC_DEFAULT_TIMEOUT (PC_DEFAULT_HEARTBEAT + 5000)
@@ -305,6 +304,8 @@ void pc_client_destroy(pc_client_t *client);
 int pc_client_join(pc_client_t *client);
 
 void pc_client_stop(pc_client_t *client);
+
+void pc_emit_event(pc_client_t *client, const char *event, void *data);
 
 /* Don't export the private CPP symbols. */
 #undef PC_TCP_REQ_FIELDS

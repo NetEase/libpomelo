@@ -1,22 +1,19 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stddef.h>
-#include <pomelo-client.h>
-#include <pomelo-private/listener.h>
-#include <pomelo-protocol/message.h>
-#include <pomelo-private/transport.h>
+#include "pomelo.h"
+#include "pomelo-private/listener.h"
+#include "pomelo-protocol/message.h"
+#include "pomelo-private/transport.h"
+#include "pomelo-private/internal.h"
+#include "pomelo-private/ngx-queue.h"
 
 static uv_loop_t *global_uv_loop = NULL;
 
 void pc__client_init(pc_client_t *client);
-void pc_emit_event(pc_client_t *client, const char *event, void *data);
 static void pc__pkg_cb(pc_pkg_type type, const char *data, size_t len,
                        void *attach);
-int pc__handshake_resp(pc_client_t *client, const char *data, size_t len);
-int pc__heartbeat(pc_client_t *client);
 int pc__data(pc_client_t *client, const char *data, size_t len);
-void pc__heartbeat_cb(uv_timer_t* heartbeat_timer, int status);
-void pc__timeout_cb(uv_timer_t* timeout_timer, int status);
 void pc__process_response(pc_client_t *client, pc_msg_t *msg);
 pc_msg_t *pc__default_msg_parse_cb(pc_client_t *client,
     const char *data, int len);
@@ -58,13 +55,13 @@ pc_client_t *pc_client_new() {
 }
 
 void pc__client_init(pc_client_t *client) {
-  client->listeners = pc_map_new(pc__release_listeners);
+  client->listeners = pc_map_new(256, pc__release_listeners);
   if(client->listeners == NULL) {
     fprintf(stderr, "Fail to init client->listeners.\n");
     abort();
   }
 
-  client->requests = pc_map_new(pc__release_requests);
+  client->requests = pc_map_new(256, pc__release_requests);
   if(client->requests == NULL) {
     fprintf(stderr, "Fail to init client->requests.\n");
     abort();

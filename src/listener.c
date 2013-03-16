@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
-#include <pomelo-private/listener.h>
+#include "pomelo-private/listener.h"
 
 pc_listener_t *pc_listener_new() {
   pc_listener_t *listener = (pc_listener_t *)malloc(sizeof(pc_listener_t));

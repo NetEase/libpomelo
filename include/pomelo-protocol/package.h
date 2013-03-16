@@ -1,8 +1,9 @@
 #ifndef POMELO_PACKAGE_H
 #define POMELO_PACKAGE_H
 
-#include <uv.h>
-#include <jansson.h>
+#include "uv.h"
+#include "jansson.h"
+#include "pomelo-private/common.h"
 
 /**
  * Pomelo package format:

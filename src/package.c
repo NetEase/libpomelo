@@ -1,9 +1,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <uv.h>
-#include <pomelo-client.h>
-#include <pomelo-protocol/package.h>
+#include "uv.h"
+#include "pomelo-private/internal.h"
+#include "pomelo-protocol/package.h"
 
 static size_t pc__pkg_head(pc_pkg_parser_t *parser,
                            const char *data, size_t offset, size_t nread);

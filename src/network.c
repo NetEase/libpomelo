@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <netinet/in.h>
-#include <pomelo-client.h>
+#include "pomelo.h"
 #include <assert.h>
-#include <pomelo-protocol/message.h>
-#include <pomelo-private/common.h>
-#include <pomelo-private/transport.h>
+#include "pomelo-protocol/message.h"
+#include "pomelo-private/common.h"
+#include "pomelo-private/transport.h"
 
 int pc__handshake_req(pc_client_t *client);
 

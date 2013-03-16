@@ -1,8 +1,8 @@
 #ifndef PC_MESSAGE_H
 #define PC_MESSAGE_H
 
-#include <jansson.h>
-#include <pomelo-client.h>
+#include "jansson.h"
+#include "pomelo.h"
 
 #define PC_MSG_FLAG_BYTES 1
 

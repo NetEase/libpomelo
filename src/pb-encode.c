@@ -6,8 +6,8 @@
 //#define PB_INTERNALS
 //#define PB_DEBUG
 //#define __BIG_ENDIAN__
-#include <pomelo-protobuf/pb.h>
-#include <pomelo-protobuf/pb-util.h>
+#include "pomelo-protobuf/pb.h"
+#include "pomelo-protobuf/pb-util.h"
 #include <string.h>
 
 /* The warn_unused_result attribute appeared first in gcc-3.4.0 */

@@ -14,8 +14,8 @@
 //#define __BIG_ENDIAN__
 //#define PB_DEBUG
 #define PB_INTERNALS
-#include <pomelo-protobuf/pb.h>
-#include <pomelo-protobuf/pb-util.h>
+#include "pomelo-protobuf/pb.h"
+#include "pomelo-protobuf/pb-util.h"
 #include <string.h>
 #include <stdlib.h>
 

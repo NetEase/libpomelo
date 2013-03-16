@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <pomelo-protocol/message.h>
+#include "pomelo-protocol/message.h"
 
 uint8_t pc__msg_id_length(uint32_t id);
 

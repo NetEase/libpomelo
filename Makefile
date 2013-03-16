@@ -1,5 +1,6 @@
 CFLAGS = -g -I./include -I./deps/uv/include -I./deps/jansson/src
-LDFLAGS = -L./deps/uv -L./deps/jansson/lib -L. -lm -luv -B static -ljansson -pthread -lpomelo -Bdynamic -framework CoreServices
+LDFLAGS = -L./deps/uv -L./deps/jansson/lib -L. -lm -luv -B static -ljansson -lpomelo -Bdynamic -framework CoreServices
+TLDFLAGS = -L. -lm -lpomelo -Bdynamic -framework CoreServices
 OBJDIR := out
 
 OBJS += src/client.o
@@ -23,7 +24,7 @@ OBJS := $(addprefix $(OBJDIR)/,$(OBJS))
 
 all: libpomelo.a
 
-$(OBJDIR)/src/%.o: src/%.c include/pomelo-client.h \
+$(OBJDIR)/src/%.o: src/%.c include/pomelo.h \
 									 include/pomelo-protocol/package.h \
 									 include/pomelo-private/map.h \
 									 include/pomelo-private/listener.h \
@@ -71,6 +72,9 @@ reconn: test/reconn.c
 
 stop: test/stop.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o test/stop test/stop.c
+
+map: test/map.c
+	$(CC) $(CFLAGS) $(LDFLAGS) -o test/map test/map.c
 
 hashtest: test/hashtest.c
 	$(CC) $(CFLAGS) $(LDFLAGS) -o test/hashtest test/hashtest.c

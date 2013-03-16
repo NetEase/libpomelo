@@ -1,8 +1,8 @@
 #ifndef PC_TRANSPORT_H
 #define PC_TRANSPORT_H
 
-#include <uv.h>
-#include <pomelo-client.h>
+#include "uv.h"
+#include "pomelo.h"
 
 pc_transport_t *pc_transport_new(pc_client_t *client);
 

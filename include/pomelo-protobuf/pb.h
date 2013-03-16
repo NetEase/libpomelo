@@ -9,7 +9,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <jansson.h>
+#include "jansson.h"
 
 /*
  * protobuf encode

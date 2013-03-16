@@ -1,8 +1,10 @@
-#include <pomelo-client.h>
+#include "pomelo.h"
 #include <unistd.h>
 
 const char *ip = "127.0.0.1";
 int port = 3010;
+
+int count = 5;
 
 // request callback
 void on_request_cb(pc_request_t *req, int status, json_t *resp) {
@@ -17,7 +19,9 @@ void on_request_cb(pc_request_t *req, int status, json_t *resp) {
   json_decref(msg);
   pc_request_destroy(req);
 
-  pc_client_stop(req->client);
+  count--;
+  if(count == 0)
+    pc_client_stop(req->client);
 }
 
 void do_request(pc_client_t *client) {
@@ -80,7 +84,9 @@ int main() {
     goto error;
   }
 
-  do_notify(client);
+  for(int i=0; i<count; i++) {
+    do_notify(client);
+  }
 
   pc_client_join(client);
 

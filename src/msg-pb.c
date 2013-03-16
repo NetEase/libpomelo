@@ -1,6 +1,6 @@
 #include <jansson.h>
-#include <pomelo-protocol/message.h>
-#include <pomelo-protobuf/pb.h>
+#include "pomelo-protocol/message.h"
+#include "pomelo-protobuf/pb.h"
 
 pc_buf_t pc__pb_encode(const json_t *msg, const json_t *pb_def) {
   pc_buf_t buf, json_buf;

@@ -1,4 +1,4 @@
-#include <pomelo-client.h>
+#include <pomelo.h>
 #include <unistd.h>
 
 const char *ip = "127.0.0.1";
@@ -10,7 +10,7 @@ void on_hey(pc_client_t *client, const char *event, void *data) {
 }
 
 int main() {
-  for(int i=0; i<3; i++) {
+  for(int i=0; i<5; i++) {
     pc_client_t *client = pc_client_new();
 
     struct sockaddr_in address;
@@ -29,7 +29,7 @@ int main() {
 
     printf("going to release: %d.\n", i);
 
-    pc_client_destroy(client);
+    pc_client_stop(client);
   }
 
   return 0;

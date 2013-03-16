@@ -1,7 +1,7 @@
 #ifndef PC_LISTENER_H
 #define PC_LISTENER_H
 
-#include <pomelo-client.h>
+#include "pomelo.h"
 
 typedef struct pc_listener_s pc_listener_t;
 
