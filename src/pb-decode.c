@@ -86,7 +86,8 @@ static bool pb_make_string_substream(pb_istream_t *stream, pb_istream_t *substre
 static void pb_close_string_substream(pb_istream_t *stream, pb_istream_t *substream);
 
 /* Decode a string */
-static bool pb_decode_string(pb_istream_t *stream, void *dest);
+static bool checkreturn pb_decode_strlen(pb_istream_t *stream, uint32_t *size);
+static bool pb_decode_string(pb_istream_t *stream, void *dest, uint32_t size);
 
 /* Decode submessage in __messages protos */
 static bool pb_decode_submessage(pb_istream_t *stream, json_t *protos, void *dest);
@@ -165,7 +166,8 @@ static bool checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
   int64_t sint_value;
   float float_value;
   double double_value;
-  char str_value[65535];
+  uint32_t str_len;
+  char *str_value;
 #ifdef PB_DEBUG
   //printf("%s\n",json_dumps(result,JSON_ENCODE_ANY));
 #endif
@@ -197,10 +199,18 @@ static bool checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
     json_object_set(result, key, json_real(double_value));
     break;
   case PB_string:
-    if (!pb_decode_string(stream, str_value)) {
+    if(!pb_decode_strlen(stream, &str_len)) {
+      return false;
+    }
+    str_value = malloc(str_len + 1);
+    if(str_value == NULL) {
+      return false;
+    }
+    if (!pb_decode_string(stream, str_value, str_len)) {
       return false;
     }
     json_object_set(result, key, json_string(str_value));
+    free(str_value);
     break;
   default:
     if (_messages) {
@@ -286,7 +296,8 @@ static bool checkreturn pb_decode(pb_istream_t *stream, json_t *protos, json_t *
       else
         return false;
     }
-    char buffer[65535];
+    char buffer[64];
+    memset(&buffer, 0, 64);
     tags = json_object_get(protos, "__tags");
     if (!tags)
       return false;
@@ -323,7 +334,11 @@ static bool checkreturn pb_decode(pb_istream_t *stream, json_t *protos, json_t *
 static bool checkreturn pb_decode_varint32(pb_istream_t *stream, uint32_t *dest) {
   uint64_t temp;
   bool status = pb_decode_varint(stream, &temp);
-  *dest = (uint32_t) temp;
+  if(status) {
+    *dest = (uint32_t) temp;
+  } else {
+    *dest = -1;
+  }
   return status;
 }
 
@@ -404,12 +419,14 @@ static bool pb_decode_fixed64(pb_istream_t *stream, void *dest) {
 #endif
 }
 
+static bool checkreturn pb_decode_strlen(pb_istream_t *stream, uint32_t *size) {
+  return pb_decode_varint32(stream, size);
+}
+
 /* Decode a string */
-static bool checkreturn pb_decode_string(pb_istream_t *stream, void *dest) {
-  uint32_t size;
+static bool checkreturn pb_decode_string(pb_istream_t *stream,
+    void *dest, uint32_t size) {
   bool status;
-  if (!pb_decode_varint32(stream, &size))
-    return false;
 
   status = pb_read(stream, (uint8_t*) dest, size);
   *((uint8_t*) dest + size) = 0;

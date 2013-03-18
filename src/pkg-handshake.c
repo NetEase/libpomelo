@@ -13,6 +13,7 @@ static void pc__handshake_ack_cb(uv_write_t* req, int status);
 int pc__handshake_req(pc_client_t *client) {
   json_t *handshake_opts = client->handshake_opts;
   json_t *body = json_object();
+  const char *data = NULL;
 
   if(body == NULL) {
     fprintf(stderr, "Fail to create json_t for handshake request.\n");
@@ -38,7 +39,7 @@ int pc__handshake_req(pc_client_t *client) {
     }
   }
 
-  const char *data = json_dumps(body, JSON_COMPACT);
+  data = json_dumps(body, JSON_COMPACT);
   if(data == NULL) {
     fprintf(stderr, "Fail to compose Pomelo handshake package.\n");
     goto error;
@@ -50,10 +51,12 @@ int pc__handshake_req(pc_client_t *client) {
     goto error;
   }
 
+  free((void *)data);
   json_decref(body);
 
   return 0;
 error:
+  if(data) free((void *)data);
   if(body) json_decref(body);
   return -1;
 }
@@ -98,6 +101,7 @@ int pc__handshake_resp(pc_client_t *client,
     json_t *dict = json_object_get(sys, "dict");
     if(dict) {
       client->route_to_code = dict;
+      json_incref(dict);
       client->code_to_route = json_object();
       const char *key;
       json_t *value;
