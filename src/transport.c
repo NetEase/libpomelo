@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "pomelo-private/transport.h"
 #include "pomelo-protocol/package.h"
 

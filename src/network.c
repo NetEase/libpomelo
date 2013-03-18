@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <netinet/in.h>
+#include <string.h>
 #include "pomelo.h"
 #include <assert.h>
 #include "pomelo-protocol/message.h"

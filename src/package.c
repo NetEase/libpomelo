@@ -124,7 +124,8 @@ pc_buf_t pc_pkg_encode(pc_pkg_type type, const char *data, size_t len) {
 
   if(len) {
     size_t body_size = len;
-    for(int i=0; i<PC_PKG_BODY_LEN_BYTES; i++, base--) {
+    int i;
+    for(i=0; i<PC_PKG_BODY_LEN_BYTES; i++, base--) {
       *base = body_size % 0x100;
       body_size >>= 8;
     }
@@ -158,7 +159,8 @@ static size_t pc__pkg_head(pc_pkg_parser_t *parser,
 
   if(parser->head_offset == parser->head_size) {
     size_t pkg_len = 0;
-    for(int i=1; i<PC_PKG_HEAD_BYTES; i++) {
+    int i;
+    for(i=1; i<PC_PKG_HEAD_BYTES; i++) {
       if(i > 1) {
         pkg_len <<= 8;
       }

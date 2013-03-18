@@ -1,3 +1,4 @@
+#include <string.h>
 #include "pomelo.h"
 
 int pc__binary_write(pc_client_t *client, const char *data, size_t len,

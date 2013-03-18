@@ -12,6 +12,9 @@
         './deps/uv/include',
         './deps/jansson/src',
       ],
+      'cflags:': [
+        '-std=c99',
+      ],
       'sources': [
         'include/pomelo-private/common.h',
         'include/pomelo-private/internal.h',
@@ -41,5 +44,21 @@
         'src/transport.c'
       ],
     },
+
+    {
+      'target_name': 'client',
+      'type': 'executable',
+      'dependencies': [
+        'libpomelo',
+      ],
+      'include_dirs': [
+        'include/',
+        './deps/uv/include',
+        './deps/jansson/src',
+      ],
+      'sources': [
+        'test/client.c'
+      ]
+    }
   ],
 }

@@ -1,4 +1,5 @@
-#include <jansson.h>
+#include <string.h>
+#include "jansson.h"
 #include "pomelo-protocol/message.h"
 #include "pomelo-protobuf/pb.h"
 
