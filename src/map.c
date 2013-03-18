@@ -52,7 +52,8 @@ int pc_map_init(pc_map_t *map, size_t capacity,
     return -1;
   }
 
-  for(int i=0; i<capacity; i++) {
+  int i;
+  for(i=0; i<capacity; i++) {
     ngx_queue_init(&map->buckets[i]);
   }
 
@@ -138,7 +139,8 @@ void *pc_map_del(pc_map_t *map, const char *key) {
 void pc_map_clear(pc_map_t *map) {
   if(map->buckets == NULL) return;
 
-  for(int i=0; i<map->capacity; i++) {
+  int i;
+  for(i=0; i<map->capacity; i++) {
      ngx_queue_t *head = &map->buckets[i];
 
     ngx_queue_t *q;

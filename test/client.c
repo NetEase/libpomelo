@@ -1,5 +1,7 @@
 #include "pomelo.h"
 #include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
 
 const char *ip = "127.0.0.1";
 int port = 3010;
@@ -84,7 +86,8 @@ int main() {
     goto error;
   }
 
-  for(int i=0; i<count; i++) {
+  int i;
+  for(i=0; i<count; i++) {
     do_notify(client);
   }
 
