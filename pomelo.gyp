@@ -48,7 +48,7 @@
     },
 
     {
-      'target_name': 'client',
+      'target_name': 'destroy',
       'type': 'executable',
       'dependencies': [
         'libpomelo',
@@ -59,7 +59,37 @@
         './deps/jansson/src',
       ],
       'sources': [
-        'test/client.c'
+        'example/destroy.c'
+      ]
+    },
+    {
+      'target_name': 'notify',
+      'type': 'executable',
+      'dependencies': [
+        'libpomelo',
+      ],
+      'include_dirs': [
+        'include/',
+        './deps/uv/include',
+        './deps/jansson/src',
+      ],
+      'sources': [
+        'example/notify.c'
+      ]
+    },
+    {
+      'target_name': 'request',
+      'type': 'executable',
+      'dependencies': [
+        'libpomelo',
+      ],
+      'include_dirs': [
+        'include/',
+        './deps/uv/include',
+        './deps/jansson/src',
+      ],
+      'sources': [
+        'example/request.c'
       ]
     }
   ],
