@@ -4,7 +4,8 @@
 void pc__cond_wait(pc_client_t *client, uint64_t timeout) {
   uv_mutex_lock(&client->mutex);
   if(timeout > 0) {
-    uv_cond_timedwait(&client->cond, &client->mutex, 3000);
+    timeout *= 1e9;
+    uv_cond_timedwait(&client->cond, &client->mutex, timeout);
   } else {
     uv_cond_wait(&client->cond, &client->mutex);
   }
@@ -34,5 +35,6 @@ void pc__worker(void *arg) {
   client->state = PC_ST_CLOSED;
 
   pc_emit_event(client, PC_EVENT_DISCONNECT, NULL);
+  pc__client_clear(client);
   pc__cond_broadcast(client);
 }

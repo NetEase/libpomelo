@@ -2,12 +2,14 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
+#include <unistd.h>
 #include "pomelo.h"
 #include "pomelo-private/listener.h"
 #include "pomelo-protocol/package.h"
 #include "pomelo-protocol/message.h"
 #include "pomelo-private/transport.h"
 #include "pomelo-private/internal.h"
+#include "pomelo-private/common.h"
 #include "pomelo-private/ngx-queue.h"
 
 static void pc__client_init(pc_client_t *client);
@@ -55,22 +57,35 @@ void pc__client_init(pc_client_t *client) {
     abort();
   }
 
-  if(uv_timer_init(client->uv_loop, &client->heartbeat_timer)) {
+  client->heartbeat_timer = (uv_timer_t *)malloc(sizeof(uv_timer_t));
+  if(client->heartbeat_timer == NULL) {
+    fprintf(stderr, "Fail to malloc client->heartbeat_timer.\n");
+    abort();
+  }
+  if(uv_timer_init(client->uv_loop, client->heartbeat_timer)) {
     fprintf(stderr, "Fail to init client->heartbeat_timer.\n");
     abort();
   }
-  client->heartbeat_timer.timer_cb = pc__heartbeat_cb;
-  client->heartbeat_timer.data = client;
+  client->heartbeat_timer->timer_cb = pc__heartbeat_cb;
+  client->heartbeat_timer->data = client;
+  client->heartbeat = 0;
 
-  if(uv_timer_init(client->uv_loop, &client->timeout_timer)) {
+  client->timeout_timer = (uv_timer_t *)malloc(sizeof(uv_timer_t));
+  if(client->timeout_timer == NULL) {
+    fprintf(stderr, "Fail to malloc client->timeout_timer.\n");
+    abort();
+  }
+  if(uv_timer_init(client->uv_loop, client->timeout_timer)) {
     fprintf(stderr, "Fail to init client->timeout_timer.\n");
     abort();
   }
-  client->timeout_timer.timer_cb = pc__timeout_cb;
-  client->timeout_timer.data = client;
+  client->timeout_timer->timer_cb = pc__timeout_cb;
+  client->timeout_timer->data = client;
+  client->timeout = 0;
 
-  uv_async_init(client->uv_loop, &client->close_async, pc__close_async_cb);
-  client->close_async.data = client;
+  client->close_async = (uv_async_t *)malloc(sizeof(uv_async_t));
+  uv_async_init(client->uv_loop, client->close_async, pc__close_async_cb);
+  client->close_async->data = client;
   uv_mutex_init(&client->mutex);
   uv_cond_init(&client->cond);
   uv_mutex_init(&client->listener_mutex);
@@ -90,11 +105,6 @@ void pc__client_init(pc_client_t *client) {
  * Clear all inner resource of Pomelo client
  */
 void pc__client_clear(pc_client_t *client) {
-  if(client->uv_loop) {
-    free(client->uv_loop);
-    client->uv_loop = NULL;
-  }
-
   if(client->listeners) {
     pc_map_destroy(client->listeners);
     client->listeners = NULL;
@@ -139,7 +149,7 @@ void pc_client_stop(pc_client_t *client) {
     return;
   }
 
-  if(PC_TP_ST_CLOSED == client->state) {
+  if(PC_ST_CLOSED == client->state) {
     return;
   }
 
@@ -149,9 +159,20 @@ void pc_client_stop(pc_client_t *client) {
     client->transport = NULL;
   }
 
-  uv_close((uv_handle_t *)&client->heartbeat_timer, NULL);
-  uv_close((uv_handle_t *)&client->timeout_timer, NULL);
-  uv_close((uv_handle_t *)&client->close_async, NULL);
+  if(client->heartbeat_timer != NULL) {
+    uv_close((uv_handle_t *)client->heartbeat_timer, pc__handle_close_cb);
+    client->heartbeat_timer = NULL;
+    client->heartbeat = 0;
+  }
+  if(client->timeout_timer != NULL) {
+    uv_close((uv_handle_t *)client->timeout_timer, pc__handle_close_cb);
+    client->timeout_timer = NULL;
+    client->timeout = 0;
+  }
+  if(client->close_async != NULL) {
+    uv_close((uv_handle_t *)client->close_async, pc__handle_close_cb);
+    client->close_async = NULL;
+  }
 }
 
 void pc_client_destroy(pc_client_t *client) {
@@ -170,13 +191,19 @@ void pc_client_destroy(pc_client_t *client) {
   // 1. asyn worker thread
   // 2. wait cond until signal or timeout
   // 3. free client
-  uv_async_send(&client->close_async);
+  uv_async_send(client->close_async);
 
-  pc__cond_wait(client, 3000);
+  pc__cond_wait(client, 3);
 
   if(PC_ST_CLOSED != client->state) {
     pc_client_stop(client);
     pc__client_clear(client);
+    // wait uv_loop_t stop
+    sleep(1);
+    if(client->uv_loop) {
+      free(client->uv_loop);
+      client->uv_loop = NULL;
+    }
   }
   free(client);
 }
@@ -237,7 +264,7 @@ int pc_add_listener(pc_client_t *client, const char *event,
   }
   listener->cb = event_cb;
 
-  uv_mutex_lock(&client->mutex);
+  uv_mutex_lock(&client->listener_mutex);
   ngx_queue_t *head = pc_map_get(client->listeners, event);
 
   if(head == NULL) {
@@ -254,13 +281,13 @@ int pc_add_listener(pc_client_t *client, const char *event,
   }
 
   ngx_queue_insert_tail(head, &listener->queue);
-  uv_mutex_unlock(&client->mutex);
+  uv_mutex_unlock(&client->listener_mutex);
 
   return 0;
 }
 
 void pc_remove_listener(pc_client_t *client, const char *event, pc_event_cb cb) {
-  uv_mutex_lock(&client->mutex);
+  uv_mutex_lock(&client->listener_mutex);
   ngx_queue_t *head = (ngx_queue_t *)pc_map_get(client->listeners, event);
   if(head == NULL) {
     return;
@@ -282,11 +309,11 @@ void pc_remove_listener(pc_client_t *client, const char *event, pc_event_cb cb) 
     pc_map_del(client->listeners, event);
     free(head);
   }
-  uv_mutex_unlock(&client->mutex);
+  uv_mutex_unlock(&client->listener_mutex);
 }
 
 void pc_emit_event(pc_client_t *client, const char *event, void *data) {
-  uv_mutex_lock(&client->mutex);
+  uv_mutex_lock(&client->listener_mutex);
   ngx_queue_t *head = (ngx_queue_t *)pc_map_get(client->listeners, event);
   if(head == NULL) {
     return;
@@ -299,7 +326,7 @@ void pc_emit_event(pc_client_t *client, const char *event, void *data) {
     listener = ngx_queue_data(item, pc_listener_t, queue);
     listener->cb(client, event, data);
   }
-  uv_mutex_unlock(&client->mutex);
+  uv_mutex_unlock(&client->listener_mutex);
 }
 
 int pc_run(pc_client_t *client) {
@@ -342,5 +369,4 @@ void pc__release_requests(pc_map_t *map, const char* key, void *value) {
 void pc__close_async_cb(uv_async_t *handle, int status) {
   pc_client_t *client = (pc_client_t *)handle->data;
   pc_client_stop(client);
-  pc__client_clear(client);
 }

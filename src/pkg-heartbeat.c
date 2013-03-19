@@ -11,8 +11,8 @@ int pc__binary_write(pc_client_t *client, const char *data, size_t len,
 static void pc__heartbeat_req_cb(uv_write_t* req, int status);
 
 int pc__heartbeat(pc_client_t *client) {
-  uv_timer_stop(&client->timeout_timer);
-  uv_timer_again(&client->heartbeat_timer);
+  uv_timer_stop(client->timeout_timer);
+  uv_timer_again(client->heartbeat_timer);
   return 0;
 }
 
@@ -54,7 +54,7 @@ void pc__heartbeat_cb(uv_timer_t* heartbeat_timer, int status) {
     return;
   }
 
-  uv_timer_again(&client->timeout_timer);
+  uv_timer_again(client->timeout_timer);
 }
 
 void pc__timeout_cb(uv_timer_t* timeout_timer, int status) {

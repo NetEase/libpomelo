@@ -254,9 +254,9 @@ struct pc_client_s {
   pc_msg_parse_done_cb parse_msg_done;
   pc_msg_encode_cb encode_msg;
   pc_msg_encode_done_cb encode_msg_done;
-  uv_timer_t heartbeat_timer;
-  uv_timer_t timeout_timer;
-  uv_async_t close_async;
+  uv_timer_t *heartbeat_timer;
+  uv_timer_t *timeout_timer;
+  uv_async_t *close_async;
   uv_mutex_t mutex;
   uv_cond_t cond;
   uv_mutex_t listener_mutex;

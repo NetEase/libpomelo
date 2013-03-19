@@ -84,7 +84,7 @@ int pc_run(pc_client_t *client);
  * Wait a condition notify of client, used internal only.
  *
  * @param client  client instance.
- * @param timeout wait timeout value or -1 for wait forever.
+ * @param timeout wait timeout value or 0 for wait forever.
  */
 void pc__cond_wait(pc_client_t *client, uint64_t timeout);
 
@@ -158,5 +158,12 @@ void pc__default_msg_encode_done_cb(pc_client_t * client, pc_buf_t buf);
  */
 void pc__pkg_cb(pc_pkg_type type, const char *data, size_t len,
                        void *attach);
+
+/**
+ * Clear the client instance.
+ *
+ * @param client client instance.
+ */
+void pc__client_clear(pc_client_t *client);
 
 #endif /* PC_INTERNAL_H */

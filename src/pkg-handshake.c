@@ -88,8 +88,8 @@ int pc__handshake_resp(pc_client_t *client,
       if(hb > 0) {
         client->heartbeat = hb * 1000;
         client->timeout = client->heartbeat * PC_HEARTBEAT_TIMEOUT_FACTOR;
-        uv_timer_set_repeat(&client->heartbeat_timer, client->heartbeat);
-        uv_timer_set_repeat(&client->timeout_timer, client->timeout);
+        uv_timer_set_repeat(client->heartbeat_timer, client->heartbeat);
+        uv_timer_set_repeat(client->timeout_timer, client->timeout);
       } else {
         client->heartbeat = -1;
         client->timeout = -1;

@@ -91,7 +91,25 @@ int pc_map_set(pc_map_t *map, const char *key, void *value) {
 
   size_t hash = pc__hash(key);
 
-  ngx_queue_insert_tail(&map->buckets[hash % map->capacity], &pair->queue);
+  ngx_queue_t *head = &map->buckets[hash % map->capacity];
+  ngx_queue_t *q = NULL;
+  pc__pair_t *old_pair = NULL;
+  ngx_queue_foreach(q, head) {
+    old_pair = ngx_queue_data(q, pc__pair_t, queue);
+    if(!strcmp(old_pair->key, key)) {
+      ngx_queue_remove(q);
+      ngx_queue_init(q);
+    } else {
+      old_pair = NULL;
+    }
+  }
+
+  ngx_queue_insert_tail(head, &pair->queue);
+
+  if(old_pair) {
+    map->release_value(map, old_pair->key, old_pair->value);
+    free(old_pair);
+  }
 
   return 0;
 error:
