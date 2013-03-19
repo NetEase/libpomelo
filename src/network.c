@@ -40,7 +40,7 @@ pc_connect_t *pc_connect_req_new(struct sockaddr_in *address) {
     return NULL;
   }
 
-  memset(req, 0, sizeof(pc_request_t));
+  memset(req, 0, sizeof(pc_connect_t));
   req->type = PC_CONNECT;
 
   struct sockaddr_in *cpy_addr =
