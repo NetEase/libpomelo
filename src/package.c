@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "uv.h"
 #include "pomelo-private/internal.h"
+#include "pomelo-private/common.h"
 #include "pomelo-protocol/package.h"
 
 static size_t pc__pkg_head(pc_pkg_parser_t *parser,

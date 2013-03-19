@@ -51,7 +51,9 @@ void on_notified(pc_notify_t *req, int status) {
 
 void on_hey(pc_client_t *client, const char *event, void *data) {
   json_t *push_msg = (json_t *)data;
-  printf("on event: %s, serve push msg: %s\n", event, json_dumps(push_msg, 0));
+  const char *json_str = json_dumps(push_msg, 0);
+  printf("on event: %s, serve push msg: %s\n", event, json_str);
+  free((void *)json_str);
   do_request(client);
 }
 

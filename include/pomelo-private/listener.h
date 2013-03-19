@@ -3,8 +3,6 @@
 
 #include "pomelo.h"
 
-typedef struct pc_listener_s pc_listener_t;
-
 struct pc_listener_s {
   pc_event_cb cb;
   ngx_queue_t queue;

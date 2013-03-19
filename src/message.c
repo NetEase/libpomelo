@@ -1,8 +1,8 @@
 #include <assert.h>
-#include "pomelo-protocol/message.h"
 #include <string.h>
+#include "pomelo-protocol/message.h"
 
-uint8_t pc__msg_id_length(uint32_t id);
+static uint8_t pc__msg_id_length(uint32_t id);
 
 static inline size_t pc__msg_encode_flag(pc_msg_type type, int compressRoute,
                                          char *base, size_t offset);
@@ -226,7 +226,7 @@ static inline size_t pc__msg_encode_route(const char *route, uint16_t route_len,
   return offset + route_len;
 }
 
-uint8_t pc__msg_id_length(uint32_t id) {
+static uint8_t pc__msg_id_length(uint32_t id) {
   uint8_t len = 0;
   do {
     len += 1;

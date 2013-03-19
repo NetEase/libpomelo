@@ -18,6 +18,8 @@ OBJS += src/pb-util.o
 OBJS += src/pb-encode.o
 OBJS += src/pb-decode.o
 OBJS += src/transport.o
+OBJS += src/thread.o
+OBJS += src/protocol.o
 #OBJS += jansson/*.o
 
 OBJS := $(addprefix $(OBJDIR)/,$(OBJS))

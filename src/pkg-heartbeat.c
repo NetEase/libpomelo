@@ -1,4 +1,5 @@
 #include "pomelo.h"
+#include "pomelo-protocol/package.h"
 
 /**
  * Pomelo package heartbeat parsing and processing.

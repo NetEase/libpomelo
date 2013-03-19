@@ -3,7 +3,7 @@
 
 #include "uv.h"
 #include "jansson.h"
-#include "pomelo-private/common.h"
+#include "pomelo.h"
 
 /**
  * Pomelo package format:
@@ -25,30 +25,11 @@
 
 #define pc__pkg_type(head) (head[0] & 0xff)
 
-typedef struct pc_pkg_parser_s pc_pkg_parser_t;
-typedef struct pc_buf_s pc_buf_t;
+#define PC_HANDSHAKE_OK 200
 
-/**
- * State machine for Pomelo package parser
- */
-typedef enum {
-  PC_PKG_HEAD = 1,        /* parsing header */
-  PC_PKG_BODY,            /* parsing body */
-  PC_PKG_CLOSED
-} pc_pkg_parser_state;
+#define PC_HEARTBEAT_TIMEOUT_FACTOR 2
 
-/**
- * Package type of Pomelo package
- */
-typedef enum {
-  PC_PKG_HANDSHAKE = 1,
-  PC_PKG_HANDSHAKE_ACK,
-  PC_PKG_HEARBEAT,
-  PC_PKG_DATA,
-  PC_PKG_KICK
-} pc_pkg_type;
-
-/**
+ /**
  * New Pomelo package arrived callback.
  *
  * @param  type   package type, refer: pc_pkg_type.
@@ -59,7 +40,7 @@ typedef enum {
 typedef void (*pc_pkg_cb)(pc_pkg_type type, const char *data,
               size_t len, void *attach);
 
-/**
+ /**
  * Structure for Pomelo package parser which provided the service to collect
  * the raw data from lower layer (such as tcp) and parse them into Pomleo
  * package.
@@ -87,15 +68,6 @@ struct pc_pkg_parser_s {
 
   /*! State of the package parser. */
   pc_pkg_parser_state state;
-};
-
-/**
- * Simple structure for memory block.
- * The pc_buf_s is cheap and could be passed by value.
- */
-struct pc_buf_s {
-  char *base;
-  size_t len;
 };
 
 /**

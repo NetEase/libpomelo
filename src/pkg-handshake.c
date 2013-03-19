@@ -1,13 +1,11 @@
 #include <string.h>
 #include "pomelo.h"
+#include "pomelo-protocol/package.h"
 
-int pc__binary_write(pc_client_t *client, const char *data, size_t len,
+extern int pc__binary_write(pc_client_t *client, const char *data, size_t len,
                      uv_write_cb cb);
-int pc__handshake_req(pc_client_t *client);
-int pc__handshake_ack(pc_client_t *client);
-int pc__handshake_resp(pc_client_t *client,
-                                const char *data, size_t len);
 
+static int pc__handshake_ack(pc_client_t *client);
 static void pc__handshake_req_cb(uv_write_t* req, int status);
 static void pc__handshake_ack_cb(uv_write_t* req, int status);
 
@@ -145,7 +143,7 @@ error:
   return -1;
 }
 
-int pc__handshake_ack(pc_client_t *client) {
+static int pc__handshake_ack(pc_client_t *client) {
   pc_buf_t buf = pc_pkg_encode(PC_PKG_HANDSHAKE_ACK, NULL, 0);
   if(buf.len == -1) {
     fprintf(stderr, "Fail to encode handshake ack package.\n");

@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <string.h>
-#include "pomelo.h"
 #include <assert.h>
+#include "pomelo.h"
+#include "pomelo-protocol/package.h"
 #include "pomelo-protocol/message.h"
 #include "pomelo-private/common.h"
 #include "pomelo-private/transport.h"
