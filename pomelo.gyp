@@ -41,7 +41,9 @@
         'src/pb-util.c',
         'src/pkg-handshake.c',
         'src/pkg-heartbeat.c',
-        'src/transport.c'
+        'src/transport.c',
+        'src/protocol.c',
+        'src/thread.c',
       ],
     },
 
