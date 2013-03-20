@@ -1,3 +1,4 @@
+#include <string.h>
 #include "pomelo.h"
 #include "pomelo-private/internal.h"
 #include "pomelo-protocol/message.h"
@@ -243,3 +244,4 @@ void pc__default_msg_encode_done_cb(pc_client_t *client, pc_buf_t buf) {
     free(buf.base);
   }
 }
+
