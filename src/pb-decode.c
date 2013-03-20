@@ -209,7 +209,9 @@ static bool checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
     if (!pb_decode_string(stream, str_value, str_len)) {
       return false;
     }
-    json_object_set(result, key, json_string(str_value));
+    json_t *json_str = json_string(str_value);
+    json_object_set(result, key, json_str);
+    json_decref(json_str);
     free(str_value);
     break;
   default:

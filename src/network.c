@@ -67,6 +67,7 @@ void pc_connect_req_destroy(pc_connect_t *req) {
     free(req->address);
     req->address = NULL;
   }
+  free(req);
 }
 
 /**
@@ -129,6 +130,7 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
   return 0;
 
 error:
+  req->data = NULL;
   if(data) free(data);
   if(transport) pc_transport_destroy(transport);
   if(connect_req) free(connect_req);

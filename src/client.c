@@ -178,32 +178,32 @@ void pc_client_stop(pc_client_t *client) {
 void pc_client_destroy(pc_client_t *client) {
   if(PC_ST_INITED == client->state) {
     pc__client_clear(client);
-    free(client);
-    return;
+    goto finally;
   }
 
   if(PC_ST_CLOSED == client->state) {
     pc__client_clear(client);
-    free(client);
-    return;
+    goto finally;
   }
 
   // 1. asyn worker thread
-  // 2. wait cond until signal or timeout
+  // 2. wait work thread exit
   // 3. free client
   uv_async_send(client->close_async);
 
-  pc__cond_wait(client, 3);
+  pc_client_join(client);
 
   if(PC_ST_CLOSED != client->state) {
     pc_client_stop(client);
-    pc__client_clear(client);
     // wait uv_loop_t stop
     sleep(1);
-    if(client->uv_loop) {
-      free(client->uv_loop);
-      client->uv_loop = NULL;
-    }
+    pc__client_clear(client);
+  }
+
+finally:
+  if(client->uv_loop) {
+    uv_loop_delete(client->uv_loop);
+    client->uv_loop = NULL;
   }
   free(client);
 }

@@ -252,4 +252,5 @@ void pc__raw_msg_destroy(pc__msg_raw_t *msg) {
   if(msg->body.len > 0) {
     free(msg->body.base);
   }
+  free(msg);
 }

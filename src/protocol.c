@@ -158,6 +158,9 @@ pc_msg_t *pc__default_msg_parse_cb(pc_client_t *client, const char *data,
     }
   }
 
+  // release resources nolong used
+  pc__raw_msg_destroy(raw_msg);
+
   return msg;
 
 error:

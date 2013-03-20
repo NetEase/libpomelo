@@ -108,6 +108,7 @@ int pc_map_set(pc_map_t *map, const char *key, void *value) {
 
   if(old_pair) {
     map->release_value(map, old_pair->key, old_pair->value);
+    free((void *)old_pair->key);
     free(old_pair);
   }
 
@@ -147,6 +148,7 @@ void *pc_map_del(pc_map_t *map, const char *key) {
       ngx_queue_remove(q);
       ngx_queue_init(q);
       value = pair->value;
+      free((void *)pair->key);
       free(pair);
       return value;
     }
@@ -169,6 +171,7 @@ void pc_map_clear(pc_map_t *map) {
       ngx_queue_remove(q);
       ngx_queue_init(q);
       map->release_value(map, pair->key, pair->value);
+      free((void *)pair->key);
       free(pair);
     }
   }

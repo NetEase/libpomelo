@@ -27,9 +27,14 @@ int pc__handshake_req(pc_client_t *client) {
   }
 
   json_object_set(body, "sys", sys);
+  json_decref(sys);
 
-  json_object_set(sys, "type", json_string(PC_TYPE));
-  json_object_set(sys, "version", json_string(PC_VERSION));
+  json_t *json_type = json_string(PC_TYPE);
+  json_t *json_version = json_string(PC_VERSION);
+  json_object_set(sys, "type", json_type);
+  json_object_set(sys, "version", json_version);
+  json_decref(json_type);
+  json_decref(json_version);
 
   if(handshake_opts) {
     json_t *user = json_object_get(handshake_opts, "user");
@@ -108,7 +113,9 @@ int pc__handshake_resp(pc_client_t *client,
       json_object_foreach(dict, key, value) {
         memset(code_str, 0, 16);
         sprintf(code_str, "%u", ((int)json_integer_value(value) & 0xff));
-        json_object_set(client->code_to_route, code_str, json_string(key));
+        json_t *json_key = json_string(key);
+        json_object_set(client->code_to_route, code_str, json_key);
+        json_decref(json_key);
       }
     }
 

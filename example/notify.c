@@ -40,7 +40,10 @@ void do_notify(pc_client_t *client) {
   // compose notify.
   const char *route = "connector.helloHandler.hello";
   json_t *msg = json_object();
-  json_object_set(msg, "msg", json_string("hello"));
+  json_t *json_str = json_string("hello");
+  json_object_set(msg, "msg", json_str);
+  // decref json string
+  json_decref(json_str);
 
   pc_notify_t *notify = pc_notify_new();
   pc_notify(client, notify, route, msg, on_notified);
