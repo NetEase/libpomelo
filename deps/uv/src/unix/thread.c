@@ -266,7 +266,7 @@ int uv_sem_trywait(uv_sem_t* sem) {
 #endif /* defined(__APPLE__) && defined(__MACH__) */
 
 
-#if defined(__APPLE__) && defined(__MACH__)
+#if defined(__APPLE__) && defined(__MACH__) || defined(__ANDROID__)
 
 int uv_cond_init(uv_cond_t* cond) {
   if (pthread_cond_init(cond, NULL))
@@ -275,7 +275,7 @@ int uv_cond_init(uv_cond_t* cond) {
     return 0;
 }
 
-#else /* !(defined(__APPLE__) && defined(__MACH__)) */
+#else /* !(defined(__APPLE__) && defined(__MACH__)) || defined(__ANDROID__)*/
 
 int uv_cond_init(uv_cond_t* cond) {
   pthread_condattr_t attr;
@@ -301,7 +301,7 @@ error2:
   return -1;
 }
 
-#endif /* defined(__APPLE__) && defined(__MACH__) */
+#endif /* defined(__APPLE__) && defined(__MACH__) || defined(__ANDROID__)*/
 
 void uv_cond_destroy(uv_cond_t* cond) {
   if (pthread_cond_destroy(cond))
@@ -323,8 +323,8 @@ void uv_cond_wait(uv_cond_t* cond, uv_mutex_t* mutex) {
     abort();
 }
 
-#if defined(__APPLE__) && defined(__MACH__)
 
+#if defined(__APPLE__) && defined(__MACH__) || defined(__ANDROID__)
 int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
   int r;
   struct timeval tv;
@@ -336,6 +336,7 @@ int uv_cond_timedwait(uv_cond_t* cond, uv_mutex_t* mutex, uint64_t timeout) {
   ts.tv_sec = abstime / NANOSEC;
   ts.tv_nsec = abstime % NANOSEC;
   r = pthread_cond_timedwait(cond, mutex, &ts);
+  
 
   if (r == 0)
     return 0;

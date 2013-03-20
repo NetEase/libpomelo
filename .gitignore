@@ -23,3 +23,5 @@ build/
 .tags_sorted_by_file
 **xcodeproj/
 **dSYM/
+
+*.DS_Store
