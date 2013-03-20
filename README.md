@@ -113,6 +113,7 @@ void on_request_cb(pc_request_t *req, int status, json_t *resp) {
   json_decref(msg);
   pc_request_destroy(req);
 
+  // stop client
   pc_client_stop(client);
 }
 
