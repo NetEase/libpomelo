@@ -60,6 +60,7 @@ int main() {
   do_request(client);
 
   // main thread sleep 3 second and then destroy the client instance.
+  printf("Main thread sleep 3 second and then destroy the client instance.\n");
   sleep(3);
 
   // release the client
