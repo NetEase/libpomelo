@@ -19,7 +19,7 @@ protocol definition in Pomelo 0.3 version.
 
 ###Create a client instance
 
-```
+``` c
 // create a client instance.
 pc_client_t *client = pc_client_new();
   
@@ -27,7 +27,7 @@ pc_client_t *client = pc_client_new();
 
 ###Add listeners
 
-```
+``` c
   // add some event callback.
   pc_add_listener(client, "onHey", on_hey);
   pc_add_listener(client, PC_EVENT_DISCONNECT, on_close);
@@ -35,7 +35,7 @@ pc_client_t *client = pc_client_new();
 
 ###Listener definition
 
-```
+``` c
 // disconnect event callback.
 void on_close(pc_client_t *client, const char *event, void *data) {
   printf("client closed: %d.\n", client->state);
@@ -44,7 +44,7 @@ void on_close(pc_client_t *client, const char *event, void *data) {
 
 ###Connect to server
 
-```
+``` c
   struct sockaddr_in address;
 
   memset(&address, 0, sizeof(struct sockaddr_in));
@@ -62,7 +62,7 @@ void on_close(pc_client_t *client, const char *event, void *data) {
 
 ###Send a notify
  
- ```
+ ``` c
 // notified callback
 void on_notified(pc_notify_t *req, int status) {
   if(status == -1) {
@@ -94,7 +94,7 @@ void do_notify(pc_client_t *client) {
 
 ###Send a request
  
- ```
+ ``` c
 // request callback
 void on_request_cb(pc_request_t *req, int status, json_t *resp) {
   if(status == -1) {
