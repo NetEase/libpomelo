@@ -27,6 +27,10 @@
 extern "C" {
 #endif
 
+#ifndef __ANDROID__
+#define __ANDROID__
+#endif
+
 #ifdef _WIN32
   /* Windows - set up dll import/export decorators. */
 # if defined(BUILDING_UV_SHARED)
@@ -63,7 +67,7 @@ extern "C" {
 #endif
 
 #if defined(__unix__) || defined(__POSIX__) || \
-    defined(__APPLE__) || defined(_AIX)
+    defined(__APPLE__) || defined(_AIX) || defined(__ANDROID__)
 # include "uv-private/uv-unix.h"
 #else
 # include "uv-private/uv-win.h"
