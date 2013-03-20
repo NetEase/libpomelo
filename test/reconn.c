@@ -1,5 +1,6 @@
 #include <pomelo.h>
 #include <unistd.h>
+#include <string.h>
 
 const char *ip = "127.0.0.1";
 int port = 3010;
@@ -10,7 +11,8 @@ void on_hey(pc_client_t *client, const char *event, void *data) {
 }
 
 int main() {
-  for(int i=0; i<5; i++) {
+  int i;
+  for(i=0; i<20; i++) {
     pc_client_t *client = pc_client_new();
 
     struct sockaddr_in address;
@@ -29,7 +31,7 @@ int main() {
 
     printf("going to release: %d.\n", i);
 
-    pc_client_stop(client);
+    pc_client_destroy(client);
   }
 
   return 0;

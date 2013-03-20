@@ -12,9 +12,6 @@
         './deps/uv/include',
         './deps/jansson/src',
       ],
-      'cflags:': [
-        '-std=c99',
-      ],
       'sources': [
         'include/pomelo-private/common.h',
         'include/pomelo-private/internal.h',
@@ -46,7 +43,6 @@
         'src/thread.c',
       ],
     },
-
     {
       'target_name': 'destroy',
       'type': 'executable',
