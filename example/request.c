@@ -16,10 +16,11 @@ void on_request_cb(pc_request_t *req, int status, json_t *resp) {
 
   // release relative resource with pc_request_t
   json_t *msg = req->msg;
+  pc_client_t *client = req->client;
   json_decref(msg);
   pc_request_destroy(req);
 
-  pc_client_stop(req->client);
+  pc_client_stop(client);
 }
 
 void do_request(pc_client_t *client) {

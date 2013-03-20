@@ -24,5 +24,4 @@ missing
 stamp-h1
 *.pyc
 *.pc
-/src/jansson_config.h
 *.exe
