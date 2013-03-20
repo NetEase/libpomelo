@@ -114,10 +114,10 @@ pc__msg_raw_t *pc_msg_decode(const char *data, size_t len) {
 
   msg = (pc__msg_raw_t *)malloc(sizeof(pc__msg_raw_t));
   if(msg == NULL) {
-    fprintf(stderr, "Fail to malloc for pc_msg_t.\n");
+    fprintf(stderr, "Fail to malloc for pc_raw_msg_t.\n");
     return NULL;
   }
-  memset(msg, 0, sizeof(pc_msg_t));
+  memset(msg, 0, sizeof(pc__msg_raw_t));
 
   size_t offset = 0;
 
