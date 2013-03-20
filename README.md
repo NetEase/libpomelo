@@ -133,7 +133,7 @@ void do_request(pc_client_t *client) {
  
 ###More example
 
-The complete examples: [example/]()
+The complete examples: [example/](https://github.com/NetEase/libpomelo/tree/master/example)
 
 Tcp server for test: [tcp-pomelo](https://github.com/changchang/tcp-pomelo). 
  
