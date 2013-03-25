@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <netinet/in.h>
 #include <string.h>
 #include <assert.h>
 #include "pomelo.h"
@@ -448,7 +447,7 @@ static int pc__async_write(pc_transport_t *transport, pc_tcp_req_t *req,
   uv_async_t *async_req = NULL;
   req->route = NULL;
 
-  cpy_route = malloc(route_len);
+  cpy_route = (char *)malloc(route_len);
   if(cpy_route == NULL) {
     fprintf(stderr, "Fail to malloc for route string in pc__async_write.\n");
     goto error;
@@ -605,10 +604,9 @@ int pc__binary_write(pc_client_t *client, const char *data, size_t len,
   attach[1] = (void *)data;
   req->data = (void *)attach;
 
-  uv_buf_t buf = {
-    .base = (char *)data,
-    .len = len
-  };
+  uv_buf_t buf;
+  buf.base = (char *)data;
+  buf.len = len;
 
   if(uv_write(req, (uv_stream_t *)client->transport->socket, &buf, 1, cb)) {
     fprintf(stderr, "Fail to write handshake ack pakcage, %s\n",

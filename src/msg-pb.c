@@ -17,7 +17,7 @@ pc_buf_t pc__pb_encode(const json_t *msg, const json_t *pb_def) {
 
   size_t eval_size = json_buf.len * PC_PB_EVAL_FACTOR;
 
-  buf.base = malloc(eval_size);
+  buf.base = (char *)malloc(eval_size);
 
   if(buf.base == NULL) {
     fprintf(stderr, "Fail to malloc for protobuf encode.\n");

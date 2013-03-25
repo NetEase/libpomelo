@@ -8,19 +8,18 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include <stdbool.h>
 #include "jansson.h"
 
 /*
  * protobuf encode
  */
-bool pc_pb_encode(uint8_t *buf, size_t len, size_t *written,
+int pc_pb_encode(uint8_t *buf, size_t len, size_t *written,
                   json_t *protos, json_t *msg);
 
 /*
  * protobuf decode
  */
-bool pc_pb_decode(uint8_t *buf, size_t len, json_t *protos,
+int pc_pb_decode(uint8_t *buf, size_t len, json_t *protos,
                   json_t *result);
 
 #endif

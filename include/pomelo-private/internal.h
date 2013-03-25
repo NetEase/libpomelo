@@ -3,6 +3,12 @@
 
 #include "pomelo.h"
 
+#ifdef _WIN32
+  #include <winsock2.h>
+#else
+  #include <netinet/in.h>
+  #include <unistd.h>
+#endif
 /**
  * Callback for received a handshake response from server.
  *

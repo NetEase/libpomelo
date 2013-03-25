@@ -80,7 +80,7 @@ int pc_map_set(pc_map_t *map, const char *key, void *value) {
   memset(pair, 0, sizeof(pc__pair_t));
   ngx_queue_init(&pair->queue);
 
-  cpy_key = malloc(key_len);
+  cpy_key = (char *)malloc(key_len);
   if(cpy_key == NULL) {
     goto error;
   }
