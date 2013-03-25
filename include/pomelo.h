@@ -41,7 +41,7 @@ typedef struct pc_request_s pc_request_t;
 typedef struct pc_notify_s pc_notify_t;
 typedef struct pc_msg_s pc_msg_t;
 typedef struct pc_pkg_parser_s pc_pkg_parser_t;
-typedef struct pc_buf_s pc_buf_t;
+typedef uv_buf_t pc_buf_t;
 
 /**
  * State machine for Pomelo package parser

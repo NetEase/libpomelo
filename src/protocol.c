@@ -120,7 +120,7 @@ pc_msg_t *pc__default_msg_parse_cb(pc_client_t *client, const char *data,
       origin_route = raw_msg->route.route_str;
     }
 
-    route_str = malloc(strlen(origin_route) + 1);
+    route_str = (char *)malloc(strlen(origin_route) + 1);
     if(route_str == NULL) {
       fprintf(stderr, "Fail to malloc for uncompress route dictionary.\n");
       goto error;

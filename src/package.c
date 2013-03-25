@@ -110,7 +110,7 @@ pc_buf_t pc_pkg_encode(pc_pkg_type type, const char *data, size_t len) {
   }
 
   size_t size = PC_PKG_HEAD_BYTES + len;
-  buf.base = malloc(size);
+  buf.base = (char *)malloc(size);
   if(buf.base == NULL) {
     fprintf(stderr, "Fail to malloc for Pomelo package, size: %lu.\n", size);
     buf.len = -1;
@@ -168,7 +168,7 @@ static size_t pc__pkg_head(pc_pkg_parser_t *parser,
     }
 
     if(pkg_len > 0) {
-      parser->pkg_buf = malloc(pkg_len);
+      parser->pkg_buf = (char *)malloc(pkg_len);
       if(parser->pkg_buf == NULL) {
         fprintf(stderr, "Fail to malloc buffer for package size: %lu\n", pkg_len);
         return -1;
@@ -206,7 +206,7 @@ static size_t pc__pkg_body(pc_pkg_parser_t *parser,
 
   if(parser->pkg_offset == parser->pkg_size) {
     // if all the package finished
-    parser->cb(pc__pkg_type(parser->head_buf),
+    parser->cb((pc_pkg_type)pc__pkg_type(parser->head_buf),
                parser->pkg_buf, parser->pkg_size, parser->attach);
     pc_pkg_parser_reset(parser);
   }
