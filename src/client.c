@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
-//#include <unistd.h>
 #include "pomelo.h"
 #include "pomelo-private/listener.h"
 #include "pomelo-protocol/package.h"
