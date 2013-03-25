@@ -73,6 +73,11 @@
             }
           ],
           ['OS != "win"',{
+            'defines':[
+              '_LARGEFILE_SOURCE',
+              '_FILE_OFFSET_BITS=64',
+              '_GNU_SOURCE',
+            ],
             'ldflags': [
               '-no-undefined',
               '-export-symbols-regex \'^json_\'',
@@ -124,6 +129,14 @@
               ],
             },
           }
+        ],
+        ['OS != "win" ',{
+          'defines':[
+              '_LARGEFILE_SOURCE',
+              '_FILE_OFFSET_BITS=64',
+              '_GNU_SOURCE',
+          ]
+        }
         ]
       ],
     },
@@ -170,6 +183,14 @@
             },
           }
         ],
+        ['OS != "win" ',{
+          'defines':[
+              '_LARGEFILE_SOURCE',
+              '_FILE_OFFSET_BITS=64',
+              '_GNU_SOURCE',
+          ]
+        }
+        ]
       ]
     },
     {
@@ -215,6 +236,14 @@
             },
           }
         ],
+        ['OS != "win" ',{
+          'defines':[
+              '_LARGEFILE_SOURCE',
+              '_FILE_OFFSET_BITS=64',
+              '_GNU_SOURCE',
+          ]
+        }
+        ]
       ]
     }
   ],

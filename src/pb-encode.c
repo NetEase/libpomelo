@@ -28,7 +28,7 @@ typedef struct _pb_ostream_t pb_ostream_t;
  * max_size is not checked.
  *
  * Rules for callback:
- * 1) Return false on IO errors. This will cause encoding to abort.
+ * 1) Return 0 on IO errors. This will cause encoding to abort.
  *
  * 2) You can use state to store your own data (e.g. buffer pointer).
  *
@@ -104,7 +104,7 @@ static int checkreturn buf_write(pb_ostream_t *stream, const uint8_t *buf,
   uint8_t *dest = (uint8_t*) stream->state;
   memcpy(dest, buf, count);
   stream->state = dest + count;
-  return true;
+  return 1;
 }
 
 static pb_ostream_t pb_ostream_from_buffer(uint8_t *buf, size_t bufsize) {
@@ -120,14 +120,14 @@ static int checkreturn pb_write(pb_ostream_t *stream, const uint8_t *buf,
     size_t count) {
   if (stream->callback != NULL ) {
     if (stream->bytes_written + count > stream->max_size)
-      return false;
+      return 0;
 
     if (!stream->callback(stream, buf, count))
-      return false;
+      return 0;
   }
 
   stream->bytes_written += count;
-  return true;
+  return 1;
 }
 
 /* Main encoding stuff */
@@ -141,29 +141,29 @@ static int checkreturn pb_encode_array(pb_ostream_t *stream, json_t *protos,
   // simple msg
   if (pb__get_type(type_text)) {
     if (!pb_encode_tag_for_field(stream, proto)) {
-      return false;
+      return 0;
     }
     if (!pb_encode_varint(stream, len)) {
-      return false;
+      return 0;
     }
     for (i = 0; i < len; i++) {
       if (!pb_encode_proto(stream, protos, proto,
           json_array_get(array, i))) {
-        return false;
+        return 0;
       }
     }
   } else {
     for (i = 0; i < len; i++) {
       if (!pb_encode_tag_for_field(stream, proto)) {
-        return false;
+        return 0;
       }
       if (!pb_encode_proto(stream, protos, proto,
           json_array_get(array, i))) {
-        return false;
+        return 0;
       }
     }
   }
-  return true;
+  return 1;
 }
 
 static int checkreturn pb_encode(pb_ostream_t *stream, json_t *protos, json_t *msg) {
@@ -184,25 +184,25 @@ static int checkreturn pb_encode(pb_ostream_t *stream, json_t *protos, json_t *m
       if (strcmp(option_text, "required") == 0
           || strcmp(option_text, "optional") == 0) {
         if (!pb_encode_tag_for_field(stream, proto)) {
-          return false;
+          return 0;
         }
 
         if (!pb_encode_proto(stream, protos, proto, value)) {
-          return false;
+          return 0;
         }
       } else if (strcmp(option_text, "repeated") == 0) {
         if (json_is_array(value)) {
           if (!pb_encode_array(stream, protos, proto, value)) {
-            return false;
+            return 0;
           }
         }
       }
     } else {
-      return false;
+      return 0;
     }
     iter = json_object_iter_next(root, iter);
   }
-  return true;
+  return 1;
 }
 
 static int checkreturn pb_encode_proto(pb_ostream_t *stream, json_t *protos,
@@ -222,33 +222,33 @@ static int checkreturn pb_encode_proto(pb_ostream_t *stream, json_t *protos,
   case PB_uInt32:
     int_val = json_number_value(value);
     if (!pb_encode_varint(stream, int_val)) {
-      return false;
+      return 0;
     }
     break;
   case PB_int32:
   case PB_sInt32:
     int_val = json_number_value(value);
     if (!pb_encode_svarint(stream, int_val)) {
-      return false;
+      return 0;
     }
     break;
   case PB_float:
     float_val = json_number_value(value);
     if (!pb_encode_fixed32(stream, &float_val)) {
-      return false;
+      return 0;
     }
     break;
   case PB_double:
     double_val = json_number_value(value);
     if (!pb_encode_fixed64(stream, &double_val)) {
-      return false;
+      return 0;
     }
     break;
   case PB_string:
     str = json_string_value(value);
     length = strlen(str);
     if (!pb_encode_string(stream, (const uint8_t *)str, length)) {
-      return false;
+      return 0;
     }
     break;
   default:
@@ -256,15 +256,15 @@ static int checkreturn pb_encode_proto(pb_ostream_t *stream, json_t *protos,
       sub_msg = json_object_get(_messages, type);
       if (sub_msg) {
         if (!pb_encode_submessage(stream, sub_msg, value)) {
-          return false;
+          return 0;
         }
       } else {
-        return false;
+        return 0;
       }
     }
 
   }
-  return true;
+  return 1;
 }
 
 /* Helper functions */
@@ -360,7 +360,7 @@ static int checkreturn pb_encode_tag_for_field(pb_ostream_t *stream, json_t *fie
 static int checkreturn pb_encode_string(pb_ostream_t *stream, const uint8_t *buffer,
     size_t size) {
   if (!pb_encode_varint(stream, (uint64_t) size))
-    return false;
+    return 0;
 
   return pb_write(stream, buffer, size);
 }
@@ -374,20 +374,20 @@ static int checkreturn pb_encode_submessage(pb_ostream_t *stream, json_t *protos
   int status;
 
   if (!pb_encode(&substream, protos, value)) {
-    return false;
+    return 0;
   }
 
   size = substream.bytes_written;
 
   if (!pb_encode_varint(stream, (uint64_t) size)) {
-    return false;
+    return 0;
   }
 
   if (stream->callback == NULL )
     return pb_write(stream, NULL, size); /* Just sizing */
 
   if (stream->bytes_written + size > stream->max_size)
-    return false;
+    return 0;
 
   /* Use a substream to verify that a callback doesn't write more than
    * what it did the first time. */
@@ -402,7 +402,7 @@ static int checkreturn pb_encode_submessage(pb_ostream_t *stream, json_t *protos
   stream->state = substream.state;
 
   if (substream.bytes_written != size) {
-    return false;
+    return 0;
   }
 
   return status;
