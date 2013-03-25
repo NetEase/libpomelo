@@ -163,4 +163,14 @@ make
 ```
 
 ###Windows
-Not test yet.
+in your libpomelo project root directory  
+open git bash and type in  
+```
+mkdir -p build
+git clone https://github.com/martine/gyp.git build/gyp
+```   
+then open cmd shell in windows and cd to your libpomelo project root directory  
+and type in  
+```
+build/gyp/gyp.bat --depth=. pomelo.gyp -Dlibrary=static_library  
+``` 
