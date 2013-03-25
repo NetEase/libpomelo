@@ -1,3 +1,8 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #ifndef PC_MAP_H
 #define PC_MAP_H
 
@@ -119,3 +124,7 @@ void *pc_map_del(pc_map_t *map, const char *key);
 void pc_map_clear(pc_map_t *map);
 
 #endif  /* PC_MAP_H */
+
+#ifdef __cplusplus
+}
+#endif

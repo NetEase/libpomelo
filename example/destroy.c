@@ -1,4 +1,8 @@
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #include <unistd.h>
+#endif
 #include <string.h>
 #include <stdlib.h>
 #include "pomelo.h"
@@ -68,7 +72,11 @@ int main() {
 
   // main thread sleep 3 second and then destroy the client instance.
   printf("Main thread sleep 3 second and then destroy the client instance.\n");
-  sleep(3);
+#ifdef _WIN32
+Sleep(3000);
+#else
+sleep(3);
+#endif
 
   // release the client
   pc_client_destroy(client);

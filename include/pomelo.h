@@ -22,6 +22,12 @@ extern "C" {
 # define PC_EXTERN /* nothing */
 #endif
 
+#ifdef _WIN32
+  #include <winsock2.h>
+#else
+  #include <netinet/in.h>
+#endif
+
 #include "uv.h"
 #include "jansson.h"
 #include "pomelo-private/map.h"
@@ -41,7 +47,7 @@ typedef struct pc_request_s pc_request_t;
 typedef struct pc_notify_s pc_notify_t;
 typedef struct pc_msg_s pc_msg_t;
 typedef struct pc_pkg_parser_s pc_pkg_parser_t;
-typedef struct pc_buf_s pc_buf_t;
+typedef struct uv_buf_t pc_buf_t;
 
 /**
  * State machine for Pomelo package parser
@@ -188,10 +194,10 @@ typedef void (*pc_msg_encode_done_cb)(pc_client_t *client, pc_buf_t buf);
  * Simple structure for memory block.
  * The pc_buf_s is cheap and could be passed by value.
  */
-struct pc_buf_s {
+/*struct pc_buf_s {
   char *base;
   size_t len;
-};
+};*/
 
 /**
  * Transport structure.

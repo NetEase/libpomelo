@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
-#include <unistd.h>
+//#include <unistd.h>
 #include "pomelo.h"
 #include "pomelo-private/listener.h"
 #include "pomelo-protocol/package.h"
@@ -196,7 +196,11 @@ void pc_client_destroy(pc_client_t *client) {
   if(PC_ST_CLOSED != client->state) {
     pc_client_stop(client);
     // wait uv_loop_t stop
-    sleep(1);
+#ifdef _WIN32
+	Sleep(1000);
+#else
+	sleep(1);
+#endif
     pc__client_clear(client);
   }
 
@@ -265,7 +269,7 @@ int pc_add_listener(pc_client_t *client, const char *event,
   listener->cb = event_cb;
 
   uv_mutex_lock(&client->listener_mutex);
-  ngx_queue_t *head = pc_map_get(client->listeners, event);
+  ngx_queue_t *head = (ngx_queue_t *)pc_map_get(client->listeners, event);
 
   if(head == NULL) {
     head = (ngx_queue_t *)malloc(sizeof(ngx_queue_t));

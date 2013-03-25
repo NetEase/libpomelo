@@ -25,7 +25,7 @@ pc_buf_t pc_msg_encode_route(uint32_t id, pc_msg_type type,
   size_t msg_len = PC_MSG_FLAG_BYTES + id_len + PC_MSG_ROUTE_LEN_BYTES +
                    route_len + msg.len;
 
-  char *base = buf.base = malloc(msg_len);
+  char *base = buf.base = (char *)malloc(msg_len);
 
   if(buf.base == NULL) {
     buf.len = -1;
@@ -71,7 +71,7 @@ pc_buf_t pc_msg_encode_code(uint32_t id, pc_msg_type type,
 
   size_t msg_len = PC_MSG_FLAG_BYTES + id_len + route_len + msg.len;
 
-  char *base = buf.base = malloc(msg_len);
+  char *base = buf.base = (char *)malloc(msg_len);
 
   if(buf.base == NULL) {
     buf.len = -1;
@@ -133,7 +133,7 @@ pc__msg_raw_t *pc_msg_decode(const char *data, size_t len) {
     goto error;
   }
 
-  msg->type = type;
+  msg->type = (pc_msg_type)type;
 
   // compress flag
   uint8_t compressRoute = flag & 0x01;
@@ -166,7 +166,7 @@ pc__msg_raw_t *pc_msg_decode(const char *data, size_t len) {
       size_t route_len = data[offset++];
 
       if(route_len) {
-        route_str = malloc(route_len + 1);
+        route_str = (char *)malloc(route_len + 1);
         if(route_str == NULL) {
           fprintf(stderr, "Fail to malloc for message route string.\n");
           goto error;
@@ -185,7 +185,7 @@ pc__msg_raw_t *pc_msg_decode(const char *data, size_t len) {
   // body
   size_t body_len = len - offset;
   if(body_len) {
-    body = malloc(body_len);
+    body = (char *)malloc(body_len);
     memcpy(body, data + offset, body_len);
   }
   msg->body.base = body;
