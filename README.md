@@ -174,3 +174,5 @@ and type in
 ```
 build/gyp/gyp.bat --depth=. pomelo.gyp -Dlibrary=static_library  
 ``` 
+
+then open pomelo.sln  in visual studio and you can build libpomelo in windows    
