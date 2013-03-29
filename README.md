@@ -153,7 +153,7 @@ Install [GYP](http://code.google.com/p/gyp/source/checkout).
 
 ```
 ./pomelo_gyp
-xcodebuld -project pomelo.xcodeproj
+xcodebuild -project pomelo.xcodeproj
 ```
 
 ###Linux
