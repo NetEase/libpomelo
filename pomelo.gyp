@@ -245,6 +245,59 @@
         }
         ]
       ]
+    },
+    {
+      'target_name': 'echo',
+      'type': 'executable',
+      'dependencies': [
+        'libpomelo',
+      ],
+      'include_dirs': [
+        'include/',
+        './deps/uv/include',
+        './deps/jansson/src',
+      ],
+      'sources': [
+        'example/echo.c'
+      ],
+      'conditions': [
+        ['OS == "win"', {
+            'msvs_settings': {
+              'VCCLCompilerTool': {
+                'AdditionalOptions': [ '/TP' ],
+              }
+            },
+            'defines': [
+              'WIN32',
+              '_CRT_NONSTDC_NO_DEPRECATE',
+              '_DEBUG',
+              '_WINDOWS',
+              '_USRDLL',
+              'JANSSON_DLL_EXPORTS',
+              '_WINDLL',
+              '_UNICODE',
+              'UNICODE'
+            ],
+            'link_settings': {
+              'libraries': [
+                '-ladvapi32.lib',
+                '-liphlpapi.lib',
+                '-lpsapi.lib',
+                '-lshell32.lib',
+                '-lws2_32.lib'
+              ],
+            },
+          }
+        ],
+        ['OS != "win" ',{
+          'defines':[
+              '_LARGEFILE_SOURCE',
+              '_FILE_OFFSET_BITS=64',
+              '_GNU_SOURCE',
+          ]
+        }
+        ]
+      ]
     }
   ],
 }
