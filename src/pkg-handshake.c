@@ -85,20 +85,15 @@ int pc__handshake_resp(pc_client_t *client,
   if(sys) {
     // setup heartbeat
     json_int_t hb = json_integer_value(json_object_get(sys, "heartbeat"));
-    if(hb < 0) {
+    if(hb <= 0) {
       // no need heartbeat
       client->heartbeat = -1;
       client->timeout = -1;
     } else {
-      if(hb > 0) {
         client->heartbeat = hb * 1000;
-        client->timeout = client->heartbeat * PC_HEARTBEAT_TIMEOUT_FACTOR;
-        uv_timer_set_repeat(client->heartbeat_timer, client->heartbeat);
-        uv_timer_set_repeat(client->timeout_timer, client->timeout);
-      } else {
-        client->heartbeat = -1;
-        client->timeout = -1;
-      }
+      client->timeout = client->heartbeat * PC_HEARTBEAT_TIMEOUT_FACTOR;
+      uv_timer_set_repeat(client->heartbeat_timer, client->heartbeat);
+      uv_timer_set_repeat(client->timeout_timer, client->timeout);
     }
 
     // setup route dictionary

@@ -161,7 +161,7 @@ void pc_map_clear(pc_map_t *map) {
 
   int i;
   for(i=0; i<map->capacity; i++) {
-     ngx_queue_t *head = &map->buckets[i];
+    ngx_queue_t *head = &map->buckets[i];
 
     ngx_queue_t *q;
     pc__pair_t *pair;
