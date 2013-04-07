@@ -44,7 +44,7 @@ void pc__heartbeat_cb(uv_timer_t* heartbeat_timer, int status) {
   pc_client_t *client = (pc_client_t *)heartbeat_timer->data;
   if(status == -1) {
     fprintf(stderr, "Pomelo heartbeat timer error, %s\n",
-            uv_err_name(uv_last_error(heartbeat_timer->loop)));
+            uv_err_name(uv_last_error(client->uv_loop)));
     pc_client_stop(client);
     return;
   }
@@ -62,7 +62,7 @@ void pc__timeout_cb(uv_timer_t* timeout_timer, int status) {
   pc_client_t *client = (pc_client_t *)timeout_timer->data;
   if(status == -1) {
     fprintf(stderr, "Pomelo timeout timer error, %s\n",
-            uv_err_name(uv_last_error(timeout_timer->loop)));
+            uv_err_name(uv_last_error(client->uv_loop)));
   } else {
     fprintf(stderr, "Pomelo client heartbeat timeout.\n");
   }

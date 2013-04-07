@@ -267,7 +267,7 @@ static void pc__request(pc_request_t *req, int status) {
 
   if(res == -1) {
     fprintf(stderr, "Send message error %s\n",
-            uv_err_name(uv_last_error(write_req->handle->loop)));
+            uv_err_name(uv_last_error(client->uv_loop)));
     goto error;
   }
 
@@ -353,7 +353,7 @@ static void pc__notify(pc_notify_t *req, int status) {
 
   if(res == -1) {
     fprintf(stderr, "Send message error %s\n",
-            uv_err_name(uv_last_error(write_req->handle->loop)));
+            uv_err_name(uv_last_error(client->uv_loop)));
     goto error;
   }
 
@@ -398,7 +398,7 @@ static void pc__on_tcp_connect(uv_connect_t *req, int status) {
 
   if(status == -1) {
     fprintf(stderr, "Connect failed error %s\n",
-            uv_err_name(uv_last_error(req->handle->loop)));
+            uv_err_name(uv_last_error(client->uv_loop)));
     goto error;
   }
 
@@ -534,7 +534,7 @@ static void pc__on_request(uv_write_t *req, int status) {
 
   if(status == -1) {
     fprintf(stderr, "Request error %s\n",
-            uv_err_name(uv_last_error(req->handle->loop)));
+            uv_err_name(uv_last_error(client->uv_loop)));
     char req_id_str[64];
     memset(req_id_str, 0, 64);
     sprintf(req_id_str, "%u", request_req->id);
@@ -569,7 +569,7 @@ static void pc__on_notify(uv_write_t *req, int status) {
 
   if(status == -1) {
     fprintf(stderr, "Notify error %s\n",
-            uv_err_name(uv_last_error(req->handle->loop)));
+            uv_err_name(uv_last_error(client->uv_loop)));
   }
 
   notify_req->cb(notify_req, status);
@@ -610,7 +610,7 @@ int pc__binary_write(pc_client_t *client, const char *data, size_t len,
 
   if(uv_write(req, (uv_stream_t *)client->transport->socket, &buf, 1, cb)) {
     fprintf(stderr, "Fail to write handshake ack pakcage, %s\n",
-            uv_err_name(uv_last_error(req->handle->loop)));
+            uv_err_name(uv_last_error(client->uv_loop)));
     goto error;
   }
 

@@ -90,7 +90,7 @@ void pc_tp_on_tcp_read(uv_stream_t *socket, ssize_t nread, uv_buf_t buf) {
   if (nread == -1) {
     if (uv_last_error(socket->loop).code != UV_EOF)
       fprintf(stderr, "Read error %s\n",
-              uv_err_name(uv_last_error(socket->loop)));
+              uv_err_name(uv_last_error(transport->client->uv_loop)));
     pc_client_stop(transport->client);
     goto error;
   }
