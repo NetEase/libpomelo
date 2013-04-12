@@ -143,7 +143,7 @@ void pc__client_clear(pc_client_t *client) {
 }
 
 void pc_client_stop(pc_client_t *client) {
-  if(PC_ST_INITED == client->state || PC_ST_CONNECTING == client->state) {
+  if(PC_ST_INITED == client->state) {
     client->state = PC_ST_CLOSED;
     return;
   }

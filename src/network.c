@@ -399,6 +399,7 @@ static void pc__on_tcp_connect(uv_connect_t *req, int status) {
   if(status == -1) {
     fprintf(stderr, "Connect failed error %s\n",
             uv_err_name(uv_last_error(client->uv_loop)));
+    pc_transport_destroy(transport);
     goto error;
   }
 
