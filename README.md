@@ -175,4 +175,8 @@ and type in
 build\gyp\gyp.bat --depth=. pomelo.gyp -Dlibrary=static_library  
 ``` 
 
-then open pomelo.sln  in visual studio and you can build libpomelo in windows    
+then open pomelo.sln  in visual studio and you can build libpomelo in windows   
+
+##Notice
+
+There is a worker thread inside `libpomelo` to run the `libuv` loop and handle the IO events. So all the callback functions are fired in the worker thread. And the application should take care the synchronization between the main thread (such as UI thread) and the `libpomelo` worker thread.
