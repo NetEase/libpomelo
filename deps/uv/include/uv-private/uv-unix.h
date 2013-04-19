@@ -126,8 +126,10 @@ typedef struct {
 
 #else /* defined(__APPLE__) && defined(__MACH__) */
 
-typedef pthread_barrier_t uv_barrier_t;
-
+#ifndef __ANDROID__
+  typedef pthread_barrier_t uv_barrier_t;
+#endif
+  
 #endif /* defined(__APPLE__) && defined(__MACH__) */
 
 /* Platform-specific definitions for uv_spawn support. */
