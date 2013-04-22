@@ -1,1 +1,1 @@
-gyp --depth=. pomelo.gyp -Dlibrary=static_library $@
+gyp --depth=. pomelo.gyp -Dlibrary=static_library -DTO=pc $@
