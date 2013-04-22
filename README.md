@@ -177,6 +177,15 @@ build\gyp\gyp.bat --depth=. pomelo.gyp -Dlibrary=static_library
 
 then open pomelo.sln  in visual studio and you can build libpomelo in windows   
 
+###Cocos2d-x  
+####Android  
+just put libpomelo in ${COCOS2DX-ROOT}/cocos2dx/platform/third_party/android/prebuild path  
+then in your cocos2d-x android project's root and type in  
+```
+./build_native.sh  
+```
+it will build libpomelo into a .so file and then you can use it in your android application  
+
 ##Notice
 
 There is a worker thread inside `libpomelo` to run the `libuv` loop and handle the IO events. So all the callback functions are fired in the worker thread. And the application should take care the synchronization between the main thread (such as UI thread) and the `libpomelo` worker thread.
