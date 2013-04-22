@@ -29,7 +29,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <linux/types.h>
-
+#include <time.h>
+ 
 #define UV__O_NONBLOCK        0x800
 #define UV__O_CLOEXEC         0x80000
 

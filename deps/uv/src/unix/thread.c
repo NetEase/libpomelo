@@ -282,8 +282,11 @@ int uv_cond_init(uv_cond_t* cond) {
 
   if (pthread_condattr_init(&attr))
     return -1;
-
+#ifndef __ANDROID__
   if (pthread_condattr_setclock(&attr, CLOCK_MONOTONIC))
+#else
+  if (pthread_condattr_setpshared(&attr, CLOCK_MONOTONIC))
+#endif
     goto error2;
 
   if (pthread_cond_init(cond, &attr))
@@ -429,6 +432,7 @@ void uv_barrier_wait(uv_barrier_t* barrier) {
 
 #else /* !(defined(__APPLE__) && defined(__MACH__)) */
 
+#ifndef __ANDROID__
 int uv_barrier_init(uv_barrier_t* barrier, unsigned int count) {
   if (pthread_barrier_init(barrier, NULL, count))
     return -1;
@@ -449,4 +453,5 @@ void uv_barrier_wait(uv_barrier_t* barrier) {
     abort();
 }
 
+#endif
 #endif /* defined(__APPLE__) && defined(__MACH__) */
