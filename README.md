@@ -156,6 +156,18 @@ Install [GYP](http://code.google.com/p/gyp/source/checkout).
 xcodebuild -project pomelo.xcodeproj
 ```
 
+###IOS
+```
+./pomelo_gyp -DTO=ios
+./build_ios
+```
+
+###IOS Simulator
+```
+./pomelo_gyp -DTO=ios
+./build_iossim
+```
+
 ###Linux
 ```
 ./pomelo_gyp
