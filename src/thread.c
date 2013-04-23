@@ -21,8 +21,11 @@ void pc__cond_broadcast(pc_client_t *client) {
 void pc__client_connected_cb(pc_connect_t* req, int status) {
   if(status == -1) {
     pc_client_stop(req->client);
+    // wait worker thread return and notify
+    return;
   }
 
+  // ok, connceted and notify main thread to go on
   pc__cond_broadcast(req->client);
 }
 
