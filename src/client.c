@@ -174,14 +174,19 @@ void pc_client_stop(pc_client_t *client) {
   }
 }
 
+
+void pc__client_force_join(pc_client_t *client){
+  uv_thread_join(&client->worker);
+}
+
 void pc_client_destroy(pc_client_t *client) {
   if(PC_ST_INITED == client->state) {
-    pc__client_clear(client);
+    //! pc__client_clear(client);
     goto finally;
   }
 
   if(PC_ST_CLOSED == client->state) {
-    pc__client_clear(client);
+    //! pc__client_clear(client);
     goto finally;
   }
 
@@ -200,10 +205,20 @@ void pc_client_destroy(pc_client_t *client) {
 #else
 	sleep(1);
 #endif
-    pc__client_clear(client);
+    
+    //! pc__client_clear(client);
   }
 
 finally:
+  //~ Issue:
+  //~ 1. The worker may clean up 'client', which leads to race
+  //~ 2. The main thread is cleaning up 'client', while the worker is busy broadcasting its demise
+  //~       after setting client state to PC_ST_CLOSED
+  //~       (the worker thread iterates thru 'listeners', where the memory may corrupt.
+  
+  pc__client_force_join(client);
+  pc__client_clear(client);
+  
   if(client->uv_loop) {
     uv_loop_delete(client->uv_loop);
     client->uv_loop = NULL;
