@@ -38,6 +38,7 @@ void pc__worker(void *arg) {
   client->state = PC_ST_CLOSED;
 
   pc_emit_event(client, PC_EVENT_DISCONNECT, NULL);
-  pc__client_clear(client);
+  // The cleanup in worker thread leads to race
+  //! pc__client_clear(client);
   pc__cond_broadcast(client);
 }
