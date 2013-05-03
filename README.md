@@ -198,6 +198,9 @@ then in your cocos2d-x android project's root and type in
 ```
 it will build libpomelo into a .so file and then you can use it in your android application  
 
+###ChatDemo  
+[pomelo-cocos2dchat](https://github.com/NetEase/pomelo-cocos2dchat) you can find more information about using libpomelo in different platforms  
+
 ##Notice
 
 There is a worker thread inside `libpomelo` to run the `libuv` loop and handle the IO events. So all the callback functions are fired in the worker thread. And the application should take care the synchronization between the main thread (such as UI thread) and the `libpomelo` worker thread.
