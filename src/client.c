@@ -205,7 +205,7 @@ void pc_client_destroy(pc_client_t *client) {
 #else
 	sleep(1);
 #endif
-    
+
     //! pc__client_clear(client);
   }
 
@@ -215,10 +215,10 @@ finally:
   //~ 2. The main thread is cleaning up 'client', while the worker is busy broadcasting its demise
   //~       after setting client state to PC_ST_CLOSED
   //~       (the worker thread iterates thru 'listeners', where the memory may corrupt.
-  
+
   pc__client_force_join(client);
   pc__client_clear(client);
-  
+
   if(client->uv_loop) {
     uv_loop_delete(client->uv_loop);
     client->uv_loop = NULL;
