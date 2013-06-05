@@ -268,6 +268,19 @@ error:
   return -1;
 }
 
+int pc_client_connect2(pc_client_t *client, pc_connect_t *conn_req, pc_connect_cb cb){
+  if(pc_connect(client, conn_req, NULL, cb)){
+    // When failed, user should be responsible of reclaiming conn_req's memory
+	// When succeeded, user should be responsible of reclaiming con_req's memory in cb
+	// This API do not hold any assumption of conn_req(How it resides in memory)
+    fprintf(stderr,"Fail to connect server.\n");
+	return -1;
+  }
+  
+  uv_thread_create(&client->worker, pc__worker, client);
+  return 0;
+}
+
 int pc_add_listener(pc_client_t *client, const char *event,
                     pc_event_cb event_cb) {
   if(PC_ST_CLOSED == client->state) {
