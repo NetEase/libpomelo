@@ -142,6 +142,31 @@ void pc__client_clear(pc_client_t *client) {
   }
 }
 
+
+/*
+ * There are cases in which client->uv_loop is never run
+ * For instance, pc_client_connect is never called, and here comes pc_client_destroy, to which the "client" is PC_ST_INITED.
+ * Instance such as uv_timer_t/uv_async_t/so , are not set-free for pc__handle_close_cb is never visited. 
+ * So we should free this 
+ */
+void pc__client_clear_uvs(pc_client_t *client){
+    if(client->heartbeat_timer != NULL) {
+        pc__handle_close_cb((uv_handle_t*)client->heartbeat_timer);
+        client->heartbeat_timer = NULL;
+        client->heartbeat = 0;
+    }
+    if(client->timeout_timer != NULL) {
+        pc__handle_close_cb((uv_handle_t*)client->timeout_timer);
+        client->timeout_timer = NULL;
+        client->timeout = 0;
+    }
+    if(client->close_async != NULL) {
+        pc__handle_close_cb((uv_handle_t*)client->close_async);
+        client->close_async = NULL;
+    }
+}
+
+
 void pc_client_stop(pc_client_t *client) {
   if(PC_ST_INITED == client->state) {
     client->state = PC_ST_CLOSED;
@@ -186,6 +211,7 @@ void pc__client_force_join(pc_client_t *client){
 void pc_client_destroy(pc_client_t *client) {
   if(PC_ST_INITED == client->state) {
     //! pc__client_clear(client);
+    pc__client_clear_uvs(client);
     goto finally;
   }
 
