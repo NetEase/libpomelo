@@ -88,6 +88,7 @@ typedef enum {
  */
 typedef enum {
   PC_TP_ST_INITED = 1,
+  PC_TP_ST_CONNECTING,
   PC_TP_ST_WORKING,
   PC_TP_ST_CLOSED
 } pc_transport_state;
