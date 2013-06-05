@@ -172,6 +172,21 @@
               'example/echo.c'
             ],
           },
+		  {
+            'target_name': 'echo2',
+            'type': 'executable',
+            'dependencies': [
+              'libpomelo',
+            ],
+            'include_dirs': [
+              'include/',
+              './deps/uv/include',
+              './deps/jansson/src',
+            ],
+            'sources': [
+              'example/echo2.c'
+            ],
+          },
         ]
       }
     ]   # TO == pc
