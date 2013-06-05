@@ -176,7 +176,11 @@ void pc_client_stop(pc_client_t *client) {
 
 
 void pc__client_force_join(pc_client_t *client){
-  uv_thread_join(&client->worker);
+  // If worker is never initialized, worker should be null
+  // and pthread_join will rise segment faul
+  if(client->worker){
+    uv_thread_join(&client->worker);
+  }
 }
 
 void pc_client_destroy(pc_client_t *client) {
