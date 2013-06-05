@@ -125,6 +125,7 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
     fprintf(stderr, "Fail to connect to server.");
     goto error;
   }
+  transport->state = PC_TP_ST_CONNECTING;
 
   return 0;
 
