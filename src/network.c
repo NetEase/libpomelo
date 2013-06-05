@@ -84,6 +84,8 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
     return -1;
   }
 
+  client->state = PC_ST_CONNECTING;
+
   uv_connect_t *connect_req = NULL;
   pc_transport_t *transport = NULL;
   void **data = NULL;
@@ -123,7 +125,6 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
     fprintf(stderr, "Fail to connect to server.");
     goto error;
   }
-  client->state = PC_ST_CONNECTING;  // Then we are connecting. Not before. 
   transport->state = PC_TP_ST_CONNECTING;
 
   return 0;
