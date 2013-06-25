@@ -232,6 +232,7 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
                         return 0;
                     }
                     json_object_set(result, key, sub_value);
+                    json_decref(sub_value);
                 }
             } else {
                 return 0;
@@ -248,6 +249,7 @@ static int checkreturn pb_decode_array(pb_istream_t *stream, json_t *proto, json
     const char *type_text;
     uint32_t size;
     int i;
+    int need_decref = 0;
     type = json_object_get(proto, "type");
     type_text = json_string_value(type);
     if (!result) {
@@ -261,22 +263,36 @@ static int checkreturn pb_decode_array(pb_istream_t *stream, json_t *proto, json
 #endif
     if (!array) {
         array = json_array();
+        need_decref = 1;
     }
 
     if (pb__get_type(type_text)) {
-        if (!pb_decode_varint32(stream, &size))
+        if (!pb_decode_varint32(stream, &size)){
+            if(need_decref) 
+                json_decref(array);
             return 0;
+        }
         for (i = 0; i < size; i++) {
             value = json_object();
-            if (!pb_decode_proto(stream, proto, protos, key, value))
+            if (!pb_decode_proto(stream, proto, protos, key, value)){
+                json_decref(value);
+                if(need_decref)
+                    json_decref(array);
                 return 0;
+            }
             json_array_append(array, value);
+            json_decref(value);
         }
     } else {
         value = json_object();
-        if (!pb_decode_proto(stream, proto, protos, NULL, value))
+        if (!pb_decode_proto(stream, proto, protos, NULL, value)){
+            json_decref(value);
+            if(need_decref)
+                json_decref(array);
             return 0;
+        }
         json_array_append(array, value);
+        json_decref(value);
     }
 
     json_object_set(result, key, array);
