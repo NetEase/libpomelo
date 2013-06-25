@@ -58,7 +58,7 @@ void pc_transport_destroy(pc_transport_t *transport) {
 }
 
 int pc_transport_start(pc_transport_t *transport) {
-  if(PC_TP_ST_INITED != transport->state) {
+  if(PC_TP_ST_CONNECTING != transport->state) {
     fprintf(stderr, "Fail to start transport for invalid state: %d.\n",
             transport->state);
     return -1;

@@ -156,6 +156,18 @@ Install [GYP](http://code.google.com/p/gyp/source/checkout).
 xcodebuild -project pomelo.xcodeproj
 ```
 
+###IOS
+```
+./pomelo_gyp -DTO=ios
+./build_ios
+```
+
+###IOS Simulator
+```
+./pomelo_gyp -DTO=ios
+./build_iossim
+```
+
 ###Linux
 ```
 ./pomelo_gyp
@@ -172,7 +184,7 @@ git clone https://github.com/martine/gyp.git build/gyp
 then open cmd shell in windows and cd to your libpomelo project root directory  
 and type in  
 ```
-build\gyp\gyp.bat --depth=. pomelo.gyp -Dlibrary=static_library  
+build\gyp\gyp.bat --depth=. pomelo.gyp -Dlibrary=static_library -DTO=pc 
 ``` 
 
 then open pomelo.sln  in visual studio and you can build libpomelo in windows   
@@ -185,6 +197,9 @@ then in your cocos2d-x android project's root and type in
 ./build_native.sh  
 ```
 it will build libpomelo into a .so file and then you can use it in your android application  
+
+###ChatDemo  
+[pomelo-cocos2dchat](https://github.com/NetEase/pomelo-cocos2dchat) you can find more information about using libpomelo in different platforms  
 
 ##Notice
 

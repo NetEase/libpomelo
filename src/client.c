@@ -174,14 +174,23 @@ void pc_client_stop(pc_client_t *client) {
   }
 }
 
+
+void pc__client_force_join(pc_client_t *client){
+  // If worker is never initialized, worker should be null
+  // and pthread_join will rise segment faul
+  if(client->worker){
+    uv_thread_join(&client->worker);
+  }
+}
+
 void pc_client_destroy(pc_client_t *client) {
   if(PC_ST_INITED == client->state) {
-    pc__client_clear(client);
+    //! pc__client_clear(client);
     goto finally;
   }
 
   if(PC_ST_CLOSED == client->state) {
-    pc__client_clear(client);
+    //! pc__client_clear(client);
     goto finally;
   }
 
@@ -200,10 +209,20 @@ void pc_client_destroy(pc_client_t *client) {
 #else
 	sleep(1);
 #endif
-    pc__client_clear(client);
+
+    //! pc__client_clear(client);
   }
 
 finally:
+  //~ Issue:
+  //~ 1. The worker may clean up 'client', which leads to race
+  //~ 2. The main thread is cleaning up 'client', while the worker is busy broadcasting its demise
+  //~       after setting client state to PC_ST_CLOSED
+  //~       (the worker thread iterates thru 'listeners', where the memory may corrupt.
+
+  pc__client_force_join(client);
+  pc__client_clear(client);
+
   if(client->uv_loop) {
     uv_loop_delete(client->uv_loop);
     client->uv_loop = NULL;
@@ -251,6 +270,19 @@ int pc_client_connect(pc_client_t *client, struct sockaddr_in *addr) {
 error:
   if(conn_req) pc_connect_req_destroy(conn_req);
   return -1;
+}
+
+int pc_client_connect2(pc_client_t *client, pc_connect_t *conn_req, pc_connect_cb cb){
+  if(pc_connect(client, conn_req, NULL, cb)){
+    // When failed, user should be responsible of reclaiming conn_req's memory
+	// When succeeded, user should be responsible of reclaiming con_req's memory in cb
+	// This API do not hold any assumption of conn_req(How it resides in memory)
+    fprintf(stderr,"Fail to connect server.\n");
+	return -1;
+  }
+  
+  uv_thread_create(&client->worker, pc__worker, client);
+  return 0;
 }
 
 int pc_add_listener(pc_client_t *client, const char *event,

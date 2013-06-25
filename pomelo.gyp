@@ -1,4 +1,51 @@
 {
+  'target_defaults': {
+    'conditions': [
+      ['OS == "win"', {
+        'msvs_settings': {
+          'VCCLCompilerTool': {
+            'AdditionalOptions': [ '/TP' ],
+          }
+        },
+        'defines': [
+          'WIN32',
+          '_CRT_NONSTDC_NO_DEPRECATE',
+          '_DEBUG',
+          '_WINDOWS',
+          '_USRDLL',
+          'JANSSON_DLL_EXPORTS',
+          '_WINDLL',
+          '_UNICODE',
+          'UNICODE'
+        ],
+        'link_settings': {
+          'libraries': [
+            '-ladvapi32.lib',
+            '-liphlpapi.lib',
+            '-lpsapi.lib',
+            '-lshell32.lib',
+            '-lws2_32.lib'
+          ],
+        },
+      }],   # OS == "win"
+      ['OS != "win" ',{
+        'defines':[
+          '_LARGEFILE_SOURCE',
+          '_FILE_OFFSET_BITS=64',
+          '_GNU_SOURCE',
+        ]
+      }],   # OS != "win"
+      ['TO == "ios"', {
+        'xcode_settings': {
+          'TARGETED_DEVICE_FAMILY': '1,2',
+          'CODE_SIGN_IDENTITY': 'iPhone Developer',
+          'IPHONEOS_DEPLOYMENT_TARGET': '5.0',
+          'ARCHS': '$(ARCHS_STANDARD_32_64_BIT)',
+        },
+      }], # TO == "ios"
+    ],    # conditions
+  },
+
   'targets': [
     {
       'target_name': 'libpomelo',
@@ -43,261 +90,105 @@
         'src/thread.c',
       ],
       'conditions': [
-          ['OS == "win"', {
-              'msvs_settings': {
-                'VCCLCompilerTool': {
-                  'AdditionalOptions': [ '/TP' ],
-                }
-              },
-              'defines': [
-                '_WIN32',
-                'WIN32',
-                '_CRT_NONSTDC_NO_DEPRECATE',
-                '_DEBUG',
-                '_WINDOWS',
-                '_USRDLL',
-                'JANSSON_DLL_EXPORTS',
-                '_WINDLL',
-                '_UNICODE',
-                'UNICODE'
-              ],
-              'link_settings': {
-                'libraries': [
-                  '-ladvapi32.lib',
-                  '-liphlpapi.lib',
-                  '-lpsapi.lib',
-                  '-lshell32.lib',
-                  '-lws2_32.lib'
-                ],
-              },
-            }
-          ],
-          ['OS != "win"',{
-            'defines':[
-              '_LARGEFILE_SOURCE',
-              '_FILE_OFFSET_BITS=64',
-              '_GNU_SOURCE',
-            ],
-            'ldflags': [
-              '-no-undefined',
-              '-export-symbols-regex \'^json_\'',
-              '-version-info 8:0:4',
-            ]
-          }
+        ['OS != "win"', {
+          'ldflags': [
+            '-no-undefined',
+            '-export-symbols-regex \'^json_\'',
+            '-version-info 8:0:4',
           ]
-      ],
+        }]    # OS != "win"
+      ],    # conditions
     },
-    {
-      'target_name': 'destroy',
-      'type': 'executable',
-      'dependencies': [
-        'libpomelo',
-      ],
-      'include_dirs': [
-        'include/',
-        './deps/uv/include',
-        './deps/jansson/src',
-      ],
-      'sources': [
-        'example/destroy.c'
-      ],
-      'conditions' : [
-        ['OS == "win"', {
-            'msvs_settings': {
-              'VCCLCompilerTool': {
-                'AdditionalOptions': [ '/TP' ],
-              }
-            },
-            'defines': [
-              'WIN32',
-              '_CRT_NONSTDC_NO_DEPRECATE',
-              '_DEBUG',
-              '_WINDOWS',
-              '_USRDLL',
-              'JANSSON_DLL_EXPORTS',
-              '_WINDLL',
-              '_UNICODE',
-              'UNICODE'
+  ],    # targets
+
+  'conditions': [
+    ['TO == "ios"',
+      {
+        'xcode_settings': {
+          'SDKROOT': 'iphoneos',
+        }, # xcode_settings
+      },
+    ],  # TO == "ios"
+    ['TO == "pc"',
+      {
+        'targets': [
+          {
+            'target_name': 'destroy',
+            'type': 'executable',
+            'dependencies': [
+              'libpomelo',
             ],
-            'link_settings': {
-              'libraries': [
-                '-ladvapi32.lib',
-                '-liphlpapi.lib',
-                '-lpsapi.lib',
-                '-lshell32.lib',
-                '-lws2_32.lib'
-              ],
-            },
-          }
-        ],
-        ['OS != "win" ',{
-          'defines':[
-              '_LARGEFILE_SOURCE',
-              '_FILE_OFFSET_BITS=64',
-              '_GNU_SOURCE',
-          ]
-        }
-        ]
-      ],
-    },
-    {
-      'target_name': 'notify',
-      'type': 'executable',
-      'dependencies': [
-        'libpomelo',
-      ],
-      'include_dirs': [
-        'include/',
-        './deps/uv/include',
-        './deps/jansson/src',
-      ],
-      'sources': [
-        'example/notify.c'
-      ],
-      'conditions':[
-        ['OS == "win"', {
-            'msvs_settings': {
-              'VCCLCompilerTool': {
-                'AdditionalOptions': [ '/TP' ],
-              }
-            },
-            'defines': [
-              'WIN32',
-              '_CRT_NONSTDC_NO_DEPRECATE',
-              '_DEBUG',
-              '_WINDOWS',
-              '_USRDLL',
-              'JANSSON_DLL_EXPORTS',
-              '_WINDLL',
-              '_UNICODE',
-              'UNICODE'
+            'include_dirs': [
+              'include/',
+              './deps/uv/include',
+              './deps/jansson/src',
             ],
-            'link_settings': {
-              'libraries': [
-                '-ladvapi32.lib',
-                '-liphlpapi.lib',
-                '-lpsapi.lib',
-                '-lshell32.lib',
-                '-lws2_32.lib'
-              ],
-            },
-          }
-        ],
-        ['OS != "win" ',{
-          'defines':[
-              '_LARGEFILE_SOURCE',
-              '_FILE_OFFSET_BITS=64',
-              '_GNU_SOURCE',
-          ]
-        }
-        ]
-      ]
-    },
-    {
-      'target_name': 'request',
-      'type': 'executable',
-      'dependencies': [
-        'libpomelo',
-      ],
-      'include_dirs': [
-        'include/',
-        './deps/uv/include',
-        './deps/jansson/src',
-      ],
-      'sources': [
-        'example/request.c'
-      ],
-      'conditions': [
-        ['OS == "win"', {
-            'msvs_settings': {
-              'VCCLCompilerTool': {
-                'AdditionalOptions': [ '/TP' ],
-              }
-            },
-            'defines': [
-              'WIN32',
-              '_CRT_NONSTDC_NO_DEPRECATE',
-              '_DEBUG',
-              '_WINDOWS',
-              '_USRDLL',
-              'JANSSON_DLL_EXPORTS',
-              '_WINDLL',
-              '_UNICODE',
-              'UNICODE'
+            'sources': [
+              'example/destroy.c'
             ],
-            'link_settings': {
-              'libraries': [
-                '-ladvapi32.lib',
-                '-liphlpapi.lib',
-                '-lpsapi.lib',
-                '-lshell32.lib',
-                '-lws2_32.lib'
-              ],
-            },
-          }
-        ],
-        ['OS != "win" ',{
-          'defines':[
-              '_LARGEFILE_SOURCE',
-              '_FILE_OFFSET_BITS=64',
-              '_GNU_SOURCE',
-          ]
-        }
-        ]
-      ]
-    },
-    {
-      'target_name': 'echo',
-      'type': 'executable',
-      'dependencies': [
-        'libpomelo',
-      ],
-      'include_dirs': [
-        'include/',
-        './deps/uv/include',
-        './deps/jansson/src',
-      ],
-      'sources': [
-        'example/echo.c'
-      ],
-      'conditions': [
-        ['OS == "win"', {
-            'msvs_settings': {
-              'VCCLCompilerTool': {
-                'AdditionalOptions': [ '/TP' ],
-              }
-            },
-            'defines': [
-              'WIN32',
-              '_CRT_NONSTDC_NO_DEPRECATE',
-              '_DEBUG',
-              '_WINDOWS',
-              '_USRDLL',
-              'JANSSON_DLL_EXPORTS',
-              '_WINDLL',
-              '_UNICODE',
-              'UNICODE'
+          },
+          {
+            'target_name': 'notify',
+            'type': 'executable',
+            'dependencies': [
+              'libpomelo',
             ],
-            'link_settings': {
-              'libraries': [
-                '-ladvapi32.lib',
-                '-liphlpapi.lib',
-                '-lpsapi.lib',
-                '-lshell32.lib',
-                '-lws2_32.lib'
-              ],
-            },
-          }
-        ],
-        ['OS != "win" ',{
-          'defines':[
-              '_LARGEFILE_SOURCE',
-              '_FILE_OFFSET_BITS=64',
-              '_GNU_SOURCE',
-          ]
-        }
+            'include_dirs': [
+              'include/',
+              './deps/uv/include',
+              './deps/jansson/src',
+            ],
+            'sources': [
+              'example/notify.c'
+            ],
+          },
+          {
+            'target_name': 'request',
+            'type': 'executable',
+            'dependencies': [
+              'libpomelo',
+            ],
+            'include_dirs': [
+              'include/',
+              './deps/uv/include',
+              './deps/jansson/src',
+            ],
+            'sources': [
+              'example/request.c'
+            ],
+          },
+          {
+            'target_name': 'echo',
+            'type': 'executable',
+            'dependencies': [
+              'libpomelo',
+            ],
+            'include_dirs': [
+              'include/',
+              './deps/uv/include',
+              './deps/jansson/src',
+            ],
+            'sources': [
+              'example/echo.c'
+            ],
+          },
+		  {
+            'target_name': 'echo2',
+            'type': 'executable',
+            'dependencies': [
+              'libpomelo',
+            ],
+            'include_dirs': [
+              'include/',
+              './deps/uv/include',
+              './deps/jansson/src',
+            ],
+            'sources': [
+              'example/echo2.c'
+            ],
+          },
         ]
-      ]
-    }
-  ],
+      }
+    ]   # TO == pc
+  ],  # conditions
 }

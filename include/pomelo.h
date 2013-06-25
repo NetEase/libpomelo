@@ -88,6 +88,7 @@ typedef enum {
  */
 typedef enum {
   PC_TP_ST_INITED = 1,
+  PC_TP_ST_CONNECTING,
   PC_TP_ST_WORKING,
   PC_TP_ST_CLOSED
 } pc_transport_state;
@@ -363,6 +364,36 @@ void pc_request_destroy(pc_request_t *req);
  * @return        0 or -1.
  */
 int pc_client_connect(pc_client_t *client, struct sockaddr_in *addr);
+
+
+/*
+ * Connect the client to server just like pc_client_connect,
+ * except that it's the asynchronous version for it.
+ * The user should be responsible to conn_req's allocation, initialization and reclamation
+ *
+ * @param client client instance
+ * @param conn_req connect request which are allocated and initialized by pc_connect_req_new
+ * @return 0 or -1
+ */
+ int pc_client_connect2(pc_client_t *client, pc_connect_t *conn_req, pc_connect_cb cb);
+
+
+/*
+ *
+ * Use for async connection
+ * 
+ * @param addr address to which the connection is made
+ * @return an instance of pc_connect_t, which should be released manually by user.
+ */
+pc_connect_t* pc_connect_req_new(struct sockaddr_in *addr);
+
+/*
+ * Destroy instance of pc_connect_t
+ *
+ * @param conn_req pc_connect_t instance
+ * @return none
+ */
+void pc_connect_req_destroy(pc_connect_t *conn_req);
 
 /**
  * Send rerquest to server.
