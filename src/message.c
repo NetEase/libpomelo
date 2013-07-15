@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <string.h>
+#include <math.h>
 #include "pomelo-protocol/message.h"
 
 static uint8_t pc__msg_id_length(uint32_t id);
@@ -7,8 +8,7 @@ static uint8_t pc__msg_id_length(uint32_t id);
 static inline size_t pc__msg_encode_flag(pc_msg_type type, int compressRoute,
                                          char *base, size_t offset);
 
-static inline size_t pc__msg_encode_id(uint32_t id, uint8_t id_len,
-                                       char *base, size_t offset);
+static inline size_t pc__msg_encode_id(uint32_t id, char *base, size_t offset);
 
 static inline size_t pc__msg_encode_route(const char *route, uint16_t route_len,
                                           char *base, size_t offset);
@@ -39,7 +39,7 @@ pc_buf_t pc_msg_encode_route(uint32_t id, pc_msg_type type,
 
   // message id
   if(PC_MSG_HAS_ID(type)) {
-    offset = pc__msg_encode_id(id, id_len, base, offset);
+    offset = pc__msg_encode_id(id, base, offset);
   }
 
   // route
@@ -85,7 +85,7 @@ pc_buf_t pc_msg_encode_code(uint32_t id, pc_msg_type type,
 
   // message id
   if(PC_MSG_HAS_ID(type)) {
-    offset = pc__msg_encode_id(id, id_len, base, offset);
+    offset = pc__msg_encode_id(id, base, offset);
   }
 
   // route code
@@ -206,15 +206,19 @@ static inline size_t pc__msg_encode_flag(pc_msg_type type, int compressRoute,
   return offset;
 }
 
-static inline size_t pc__msg_encode_id(uint32_t id, uint8_t id_len,
-                                char *base, size_t offset) {
-  size_t index = offset + id_len - 1;
-  base[index--] = id & 0x7f;
-  while(index >= offset) {
-    id >>= 7;
-    base[index--] = (id & 0x7f) | 0x80;
-  }
-  return offset + id_len;
+static inline size_t pc__msg_encode_id(uint32_t id, char *base, size_t offset) {
+  do{
+      uint32_t tmp = id % 128;
+      uint32_t next = floor(id/128);
+
+      if(next != 0){
+        tmp = tmp + 128;
+      }
+      base[offset++] = tmp;
+      id = next;
+    } while(id != 0);
+
+  return offset;
 }
 
 static inline size_t pc__msg_encode_route(const char *route, uint16_t route_len,
