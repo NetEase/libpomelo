@@ -1,6 +1,5 @@
 #include <assert.h>
 #include <string.h>
-#include <math.h>
 #include "pomelo-protocol/message.h"
 
 static uint8_t pc__msg_id_length(uint32_t id);
@@ -209,7 +208,7 @@ static inline size_t pc__msg_encode_flag(pc_msg_type type, int compressRoute,
 static inline size_t pc__msg_encode_id(uint32_t id, char *base, size_t offset) {
   do{
       uint32_t tmp = id % 128;
-      uint32_t next = floor(id/128);
+      uint32_t next = id / 128;
 
       if(next != 0){
         tmp = tmp + 128;
