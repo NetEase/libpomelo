@@ -86,7 +86,7 @@ static void pb_close_string_substream(pb_istream_t *stream, pb_istream_t *substr
 
 /* Decode a string */
 static int checkreturn pb_decode_strlen(pb_istream_t *stream, uint32_t *size);
-static int pb_decode_string(pb_istream_t *stream, void *dest);
+static int pb_decode_string(pb_istream_t *stream, void *dest, uint32_t size);
 
 /* Decode submessage in __messages protos */
 static int pb_decode_submessage(pb_istream_t *stream, json_t *protos, void *dest);
@@ -214,7 +214,14 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
         }
         break;
     case PB_string:
-        if (!pb_decode_string(stream, str_value)) {
+        if (!pb_decode_strlen(stream, &str_len)) {
+            return 0;
+        }
+        str_value = (char *)malloc(str_len + 1);
+        if (str_value == NULL) {
+            return 0;
+        }
+        if (!pb_decode_string(stream, str_value, str_len)) {
             return 0;
         }
         if(json_is_object(result)){
@@ -222,6 +229,7 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
         }else{
             json_array_append(result, json_string(str_value));
         }
+        free(str_value);
         break;
     default:
         if (_messages) {
@@ -449,14 +457,12 @@ static int checkreturn pb_decode_strlen(pb_istream_t *stream, uint32_t *size) {
 }
 
 /* Decode a string */
-static int checkreturn pb_decode_string(pb_istream_t *stream, void *dest) {
-    uint32_t size;
+static int checkreturn pb_decode_string(pb_istream_t *stream,
+                                        void *dest, uint32_t size) {
     int status;
-    if (!pb_decode_varint32(stream, &size))
-        return 0;
 
-    status = pb_read(stream, (uint8_t*) dest, size);
-    *((uint8_t*) dest + size) = 0;
+    status = pb_read(stream, (uint8_t *) dest, size);
+    *((uint8_t *) dest + size) = 0;
     return status;
 }
 
