@@ -219,9 +219,11 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
         }
         str_value = (char *)malloc(str_len + 1);
         if (str_value == NULL) {
+            free(str_value);
             return 0;
         }
         if (!pb_decode_string(stream, str_value, str_len)) {
+            free(str_value);
             return 0;
         }
         if(json_is_object(result)){
