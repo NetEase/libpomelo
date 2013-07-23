@@ -350,17 +350,16 @@ void pc_remove_listener(pc_client_t *client, const char *event, pc_event_cb cb) 
 void pc_emit_event(pc_client_t *client, const char *event, void *data) {
   uv_mutex_lock(&client->listener_mutex);
   ngx_queue_t *head = (ngx_queue_t *)pc_map_get(client->listeners, event);
-  if(head == NULL) {
-    return;
+  if(head != NULL) {
+      ngx_queue_t *item = NULL;
+      pc_listener_t *listener = NULL;
+      
+      ngx_queue_foreach(item, head) {
+          listener = ngx_queue_data(item, pc_listener_t, queue);
+          listener->cb(client, event, data);
+      }
   }
 
-  ngx_queue_t *item = NULL;
-  pc_listener_t *listener = NULL;
-
-  ngx_queue_foreach(item, head) {
-    listener = ngx_queue_data(item, pc_listener_t, queue);
-    listener->cb(client, event, data);
-  }
   uv_mutex_unlock(&client->listener_mutex);
 }
 
