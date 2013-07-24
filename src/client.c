@@ -307,6 +307,7 @@ int pc_add_listener(pc_client_t *client, const char *event,
     if(head == NULL) {
       fprintf(stderr, "Fail to create listener queue.\n");
       pc_listener_destroy(listener);
+      uv_mutex_unlock(&client->listener_mutex);
       return -1;
     }
 
@@ -325,6 +326,7 @@ void pc_remove_listener(pc_client_t *client, const char *event, pc_event_cb cb) 
   uv_mutex_lock(&client->listener_mutex);
   ngx_queue_t *head = (ngx_queue_t *)pc_map_get(client->listeners, event);
   if(head == NULL) {
+    uv_mutex_unlock(&client->listener_mutex);
     return;
   }
 
@@ -351,6 +353,7 @@ void pc_emit_event(pc_client_t *client, const char *event, void *data) {
   uv_mutex_lock(&client->listener_mutex);
   ngx_queue_t *head = (ngx_queue_t *)pc_map_get(client->listeners, event);
   if(head == NULL) {
+    uv_mutex_unlock(&client->listener_mutex);
     return;
   }
 
