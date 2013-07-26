@@ -143,14 +143,13 @@ pc__msg_raw_t *pc_msg_decode(const char *data, size_t len) {
 
   if(PC_MSG_HAS_ID(type)) {
     PC__MSG_CHECK_LEN(offset + 1, len);
-    uint8_t byte = data[offset++];
-    id = byte & 0x7f;
-    while(byte & 0x80) {
-      id <<= 7;
-      PC__MSG_CHECK_LEN(offset + 1, len);
-      byte = data[offset++];
-      id |= byte & 0x7f;
-    }
+    int i = 0;
+    uint8_t m;
+    do{
+      m = data[offset++];
+      id = id + ((m & Ox7f) * (2 << (7*i)));
+      i++;
+    }while(m >= 128)
   }
   msg->id = id;
 
