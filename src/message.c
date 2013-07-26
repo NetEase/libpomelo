@@ -147,9 +147,9 @@ pc__msg_raw_t *pc_msg_decode(const char *data, size_t len) {
     uint8_t m;
     do{
       m = data[offset++];
-      id = id + ((m & Ox7f) * (2 << (7*i)));
+      id = id + ((m & 0x7f) * (2 << (7*i)));
       i++;
-    }while(m >= 128)
+    }while(m >= 128);
   }
   msg->id = id;
 
