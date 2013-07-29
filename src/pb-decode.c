@@ -177,9 +177,9 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
             return 0;
         }
         if(json_is_object(result)){
-            json_object_set(result, key, json_integer(int_value));
+            json_object_set_new(result, key, json_integer(int_value));
         }else{
-            json_array_append(result, json_integer(int_value));
+            json_array_append_new(result, json_integer(int_value));
         }
         break;
     case PB_int32:
@@ -188,9 +188,9 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
             return 0;
         }
         if(json_is_object(result)){
-            json_object_set(result, key, json_integer(sint_value));
+            json_object_set_new(result, key, json_integer(sint_value));
         }else{
-            json_array_append(result, json_integer(sint_value));
+            json_array_append_new(result, json_integer(sint_value));
         }
         break;
     case PB_float:
@@ -198,9 +198,9 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
             return 0;
         }
         if(json_is_object(result)){
-            json_object_set(result, key, json_real(float_value));
+            json_object_set_new(result, key, json_real(float_value));
         }else{
-            json_array_append(result, json_real(float_value));
+            json_array_append_new(result, json_real(float_value));
         }
         break;
     case PB_double:
@@ -208,9 +208,9 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
             return 0;
         }
         if(json_is_object(result)){
-            json_object_set(result, key, json_real(double_value));
+            json_object_set_new(result, key, json_real(double_value));
         }else{
-            json_array_append(result, json_real(double_value));
+            json_array_append_new(result, json_real(double_value));
         }
         break;
     case PB_string:
@@ -227,9 +227,9 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
             return 0;
         }
         if(json_is_object(result)){
-            json_object_set(result, key, json_string(str_value));
+            json_object_set_new(result, key, json_string(str_value));
         }else{
-            json_array_append(result, json_string(str_value));
+            json_array_append_new(result, json_string(str_value));
         }
         free(str_value);
         break;
@@ -309,6 +309,8 @@ static int checkreturn pb_decode_array(pb_istream_t *stream, json_t *proto, json
     }
 
     json_object_set(result, key, array);
+	if(need_decref)
+		 json_decref(array);
 
     return 1;
 }
