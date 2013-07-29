@@ -12,7 +12,7 @@
 #endif
 
 //#define __BIG_ENDIAN__
-//#define PB_DEBUG
+// #define PB_DEBUG
 #define PB_INTERNALS
 #include "pomelo-protobuf/pb.h"
 #include "pomelo-protobuf/pb-util.h"
@@ -168,7 +168,7 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
     uint32_t str_len;
     char *str_value;
 #ifdef PB_DEBUG
-    printf("%s\n",json_dumps(result,JSON_ENCODE_ANY));
+    printf("%s\n", json_dumps(result, JSON_ENCODE_ANY));
 #endif
     _messages = json_object_get(protos, "__messages");
     switch (pb__get_type(type_text)) {
@@ -176,9 +176,9 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
         if (!pb_decode_varint(stream, &int_value)) {
             return 0;
         }
-        if(json_is_object(result)){
+        if (json_is_object(result)) {
             json_object_set_new(result, key, json_integer(int_value));
-        }else{
+        } else {
             json_array_append_new(result, json_integer(int_value));
         }
         break;
@@ -187,9 +187,9 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
         if (!pb_decode_svarint(stream, &sint_value)) {
             return 0;
         }
-        if(json_is_object(result)){
+        if (json_is_object(result)) {
             json_object_set_new(result, key, json_integer(sint_value));
-        }else{
+        } else {
             json_array_append_new(result, json_integer(sint_value));
         }
         break;
@@ -197,9 +197,9 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
         if (!pb_decode_fixed32(stream, &float_value)) {
             return 0;
         }
-        if(json_is_object(result)){
+        if (json_is_object(result)) {
             json_object_set_new(result, key, json_real(float_value));
-        }else{
+        } else {
             json_array_append_new(result, json_real(float_value));
         }
         break;
@@ -207,9 +207,9 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
         if (!pb_decode_fixed64(stream, &double_value)) {
             return 0;
         }
-        if(json_is_object(result)){
+        if (json_is_object(result)) {
             json_object_set_new(result, key, json_real(double_value));
-        }else{
+        } else {
             json_array_append_new(result, json_real(double_value));
         }
         break;
@@ -226,9 +226,9 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
             free(str_value);
             return 0;
         }
-        if(json_is_object(result)){
+        if (json_is_object(result)) {
             json_object_set_new(result, key, json_string(str_value));
-        }else{
+        } else {
             json_array_append_new(result, json_string(str_value));
         }
         free(str_value);
@@ -282,25 +282,23 @@ static int checkreturn pb_decode_array(pb_istream_t *stream, json_t *proto, json
     }
 
     if (pb__get_type(type_text)) {
-        if (!pb_decode_varint32(stream, &size)){
-            if(need_decref) 
+        if (!pb_decode_varint32(stream, &size)) {
+            if (need_decref)
                 json_decref(array);
             return 0;
         }
         for (i = 0; i < size; i++) {
-            if (!pb_decode_proto(stream, proto, protos, key, array)){
-                json_decref(value);
-                if(need_decref)
+            if (!pb_decode_proto(stream, proto, protos, key, array)) {
+                if (need_decref)
                     json_decref(array);
                 return 0;
             }
-            json_decref(value);
         }
     } else {
         value = json_object();
-        if (!pb_decode_proto(stream, proto, protos, NULL, value)){
+        if (!pb_decode_proto(stream, proto, protos, NULL, value)) {
             json_decref(value);
-            if(need_decref)
+            if (need_decref)
                 json_decref(array);
             return 0;
         }
@@ -309,8 +307,8 @@ static int checkreturn pb_decode_array(pb_istream_t *stream, json_t *proto, json
     }
 
     json_object_set(result, key, array);
-	if(need_decref)
-		 json_decref(array);
+    if (need_decref)
+        json_decref(array);
 
     return 1;
 }
