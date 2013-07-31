@@ -172,7 +172,7 @@
               'example/echo.c'
             ],
           },
-		  {
+		      {
             'target_name': 'echo2',
             'type': 'executable',
             'dependencies': [
@@ -185,6 +185,40 @@
             ],
             'sources': [
               'example/echo2.c'
+            ],
+          },
+          {
+            'target_name': 'test_protobuf',
+            'type': 'executable',
+            'dependencies': [
+              'libpomelo',
+            ],
+            'include_dirs': [
+              'include/',
+              './deps/uv/include',
+              './deps/jansson/src',
+            ],
+            'sources': [
+              'test/protobuf/test_protobuf.c',
+              'src/pb-decode.c',
+            ],
+          },
+          {
+            'target_name': 'robot_chat',
+            'type': 'executable',
+            'dependencies': [
+              'libpomelo',
+            ],
+            'include_dirs': [
+              'include/',
+              './deps/uv/include',
+              './deps/jansson/src',
+            ],
+            'sources': [
+              'test/robot/robot_chat.c',
+              'src/client.c',
+              'src/network.c',
+              'src/pkg-handshake.c'
             ],
           },
         ]
