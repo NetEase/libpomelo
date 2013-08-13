@@ -247,7 +247,6 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, const json_t *gprot
                 strcpy(head_text, head);
                 strcat(head_text, type_text);
                 // check root msg in gprotos
-                // printf("pb_decode_proto %d %s\n", strlen(head) + strlen(type_text) + 1, head_text);
                 sub_msg = json_object_get(gprotos, head_text);
                 free(head_text);
             }

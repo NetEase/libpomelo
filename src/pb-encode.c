@@ -254,21 +254,15 @@ static int checkreturn pb_encode_proto(pb_ostream_t *stream, const json_t *gprot
         break;
     default:
         if (_messages) {
-            // printf("%s\n", json_dumps(gprotos, JSON_INDENT(2)));
-            // printf("%s\n", json_dumps(_messages, JSON_INDENT(2)));
-            // printf("%s\n", type);
             sub_msg = json_object_get(_messages, type);
             if (!sub_msg) {
                 // check root msg in gprotos
                 const char *head = "message ";
-                // char head_text[100];
                 char *head_text = (char *)malloc(strlen(head) + strlen(type) + 1);
                 memset(head_text, 0, sizeof(head_text));
                 strcpy(head_text, head);
                 strcat(head_text, type);
-                // printf("pb_encode_proto %d %s\n", strlen(head) + strlen(type) + 1, head_text);
                 sub_msg = json_object_get(gprotos, head_text);
-                // printf("pb_encode_proto %s\n", json_dumps(sub_msg, JSON_INDENT(2)));
                 free(head_text);
             }
             if (sub_msg) {
