@@ -45,7 +45,7 @@ struct _pb_istream_t {
 #endif
 };
 
-static int pb_decode(pb_istream_t *stream, json_t *protos, json_t *result);
+static int pb_decode(pb_istream_t *stream, const json_t *gprotos, const json_t *protos, json_t *result);
 
 static pb_istream_t pb_istream_from_buffer(uint8_t *buf, size_t bufsize);
 static int pb_read(pb_istream_t *stream, uint8_t *buf, size_t count);
@@ -54,9 +54,9 @@ static int pb_read(pb_istream_t *stream, uint8_t *buf, size_t count);
 /* --- Helper functions ---
  * You may want to use these from your caller or callbacks.
  */
-static int pb_decode_proto(pb_istream_t *stream, json_t *proto, json_t *protos, const char *key, json_t *result);
+static int pb_decode_proto(pb_istream_t *stream, const json_t *gprotos, const json_t *proto, const json_t *protos, const char *key, json_t *result);
 
-static int pb_decode_array(pb_istream_t *stream, json_t *proto, json_t *protos, const char *key, json_t *result);
+static int pb_decode_array(pb_istream_t *stream, const json_t *gprotos, const json_t *proto, const json_t *protos, const char *key, json_t *result);
 
 /* Decode the tag for the next field in the stream. Gives the wire type and
  * field tag. At end of the message, returns 0 and sets eof to 1. */
@@ -89,12 +89,12 @@ static int checkreturn pb_decode_strlen(pb_istream_t *stream, uint32_t *size);
 static int pb_decode_string(pb_istream_t *stream, void *dest, uint32_t size);
 
 /* Decode submessage in __messages protos */
-static int pb_decode_submessage(pb_istream_t *stream, json_t *protos, void *dest);
+static int pb_decode_submessage(pb_istream_t *stream, const json_t *gprotos, const json_t *protos, void *dest);
 
-int pc_pb_decode(uint8_t *buf, size_t len, json_t *protos,
+int pc_pb_decode(uint8_t *buf, size_t len, const json_t *gprotos, const json_t *protos,
                  json_t *result) {
     pb_istream_t stream = pb_istream_from_buffer(buf, len);
-    if (!pb_decode(&stream, protos, result)) {
+    if (!pb_decode(&stream, gprotos, protos, result)) {
         fprintf(stderr, "decode error\n");
         return 0;
     }
@@ -155,21 +155,25 @@ static pb_istream_t pb_istream_from_buffer(uint8_t *buf, size_t bufsize) {
  * Decode a single field *
  *************************/
 
-static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
-                                       json_t *protos, const char *key, json_t *result) {
+static int checkreturn pb_decode_proto(pb_istream_t *stream, const json_t *gprotos, const json_t *proto,
+                                       const json_t *protos, const char *key, json_t *result) {
     json_t *type, *_messages, *sub_msg, *sub_value;
     const char *type_text;
+
     type = json_object_get(proto, "type");
     type_text = json_string_value(type);
+
     uint64_t int_value;
     int64_t sint_value;
     float float_value;
     double double_value;
     uint32_t str_len;
     char *str_value;
+
 #ifdef PB_DEBUG
-    printf("%s\n", json_dumps(result, JSON_ENCODE_ANY));
+    printf("[PB_DEBUG:] %s\n", json_dumps(result, JSON_ENCODE_ANY));
 #endif
+
     _messages = json_object_get(protos, "__messages");
     switch (pb__get_type(type_text)) {
     case PB_uInt32:
@@ -236,14 +240,26 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
     default:
         if (_messages) {
             sub_msg = json_object_get(_messages, type_text);
+            if (!sub_msg) {
+                const char *head = "message ";
+                char *head_text = (char *)malloc(strlen(head) + strlen(type_text) + 1);
+                memset(head_text, 0, sizeof(head_text));
+                strcpy(head_text, head);
+                strcat(head_text, type_text);
+                // check root msg in gprotos
+                // printf("pb_decode_proto %d %s\n", strlen(head) + strlen(type_text) + 1, head_text);
+                sub_msg = json_object_get(gprotos, head_text);
+                free(head_text);
+            }
+
             if (sub_msg) {
                 if (!key) {
-                    if (!pb_decode_submessage(stream, sub_msg, result)) {
+                    if (!pb_decode_submessage(stream, gprotos, sub_msg, result)) {
                         return 0;
                     }
                 } else {
                     sub_value = json_object();
-                    if (!pb_decode_submessage(stream, sub_msg, sub_value)) {
+                    if (!pb_decode_submessage(stream, gprotos, sub_msg, sub_value)) {
                         return 0;
                     }
                     json_object_set(result, key, sub_value);
@@ -258,7 +274,7 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, json_t *proto,
     return 1;
 }
 
-static int checkreturn pb_decode_array(pb_istream_t *stream, json_t *proto, json_t *protos,
+static int checkreturn pb_decode_array(pb_istream_t *stream, const json_t *gprotos, const json_t *proto, const json_t *protos,
                                        const char *key, json_t *result) {
     json_t *type, *array, *value;
     const char *type_text;
@@ -288,7 +304,7 @@ static int checkreturn pb_decode_array(pb_istream_t *stream, json_t *proto, json
             return 0;
         }
         for (i = 0; i < size; i++) {
-            if (!pb_decode_proto(stream, proto, protos, key, array)) {
+            if (!pb_decode_proto(stream, gprotos, proto, protos, key, array)) {
                 if (need_decref)
                     json_decref(array);
                 return 0;
@@ -296,7 +312,7 @@ static int checkreturn pb_decode_array(pb_istream_t *stream, json_t *proto, json
         }
     } else {
         value = json_object();
-        if (!pb_decode_proto(stream, proto, protos, NULL, value)) {
+        if (!pb_decode_proto(stream, gprotos, proto, protos, NULL, value)) {
             json_decref(value);
             if (need_decref)
                 json_decref(array);
@@ -317,7 +333,8 @@ static int checkreturn pb_decode_array(pb_istream_t *stream, json_t *proto, json
  * Decode all fields *
  *********************/
 
-static int checkreturn pb_decode(pb_istream_t *stream, json_t *protos, json_t *result) {
+static int checkreturn pb_decode(pb_istream_t *stream, const json_t *gprotos,
+                                 const json_t *protos, json_t *result) {
     while (stream->bytes_left) {
         uint32_t tag;
         int wire_type;
@@ -349,10 +366,10 @@ static int checkreturn pb_decode(pb_istream_t *stream, json_t *protos, json_t *r
         option_text = json_string_value(option);
         if (strcmp(option_text, "optional") == 0
                 || strcmp(option_text, "required") == 0) {
-            if (!pb_decode_proto(stream, proto, protos, name, result))
+            if (!pb_decode_proto(stream, gprotos, proto, protos, name, result))
                 return 0;
         } else if (strcmp(option_text, "repeated") == 0) {
-            if (!pb_decode_array(stream, proto, protos, name, result))
+            if (!pb_decode_array(stream, gprotos, proto, protos, name, result))
                 return 0;
         }
     }
@@ -518,8 +535,8 @@ static void pb_close_string_substream(pb_istream_t *stream, pb_istream_t *substr
 }
 
 /* Decode submessage in __messages protos */
-static int checkreturn pb_decode_submessage(pb_istream_t *stream, json_t *protos,
-        void *dest) {
+static int pb_decode_submessage(pb_istream_t *stream, const json_t *gprotos, const json_t *protos,
+                                void *dest) {
     int status;
     pb_istream_t substream;
 
@@ -528,7 +545,7 @@ static int checkreturn pb_decode_submessage(pb_istream_t *stream, json_t *protos
     }
     /* New array entries need to be initialized, while required and optional
      * submessages have already been initialized in the top-level pb_decode. */
-    status = pb_decode(&substream, protos, (json_t *)dest);
+    status = pb_decode(&substream, gprotos, protos, (json_t *)dest);
 
     pb_close_string_substream(stream, &substream);
     return status;

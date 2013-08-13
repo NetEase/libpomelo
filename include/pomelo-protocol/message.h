@@ -138,7 +138,7 @@ json_t *pc__json_decode(const char *data, size_t offset, size_t len);
  * @param  pb_def protobuf definition for the message
  * @return        encode result and buf.len = -1 for error. buf.base should be released by free() outside.
  */
-pc_buf_t pc__pb_encode(const json_t *msg, const json_t *pb);
+pc_buf_t pc__pb_encode(const json_t *msg, const json_t *gprotos, const json_t *pb_def);
 
 /**
  * Do protobuf decode for the binary data. The return json_t object could be
@@ -151,6 +151,6 @@ pc_buf_t pc__pb_encode(const json_t *msg, const json_t *pb);
  * @return        decode result or NULL for error. Result should be released by json_decref() outside.
  */
 json_t *pc__pb_decode(const char *data, size_t offset, size_t len,
-                      const json_t *pb_def);
+                      const json_t *gprotos, const json_t *pb_def);
 
 #endif /* PC_MESSAGE_H */

@@ -147,7 +147,7 @@ pc_msg_t *pc__default_msg_parse_cb(pc_client_t *client, const char *data,
     json_t *pb_def = json_object_get(client->server_protos, route_str);
     if(pb_def) {
       // protobuf decode
-      msg->msg = pc__pb_decode(body.base, 0, body.len, pb_def);
+      msg->msg = pc__pb_decode(body.base, 0, body.len, client->server_protos, pb_def);
     } else {
       // json decode
       msg->msg = pc__json_decode(body.base, 0, body.len);
@@ -193,7 +193,7 @@ pc_buf_t pc__default_msg_encode_cb(pc_client_t *client, uint32_t reqId,
   // encode body
   json_t *pb_def = json_object_get(client->client_protos, route);
   if(pb_def) {
-    body_buf = pc__pb_encode(msg, pb_def);
+    body_buf = pc__pb_encode(msg, client->client_protos, pb_def);
     if(body_buf.len == -1) {
       fprintf(stderr, "Fail to encode message with protobuf: %s\n", route);
       goto error;
