@@ -8,14 +8,16 @@ int main() {
     json_t *msg, *protos, *root, *value, *option, *proto, *result;
     json_error_t error;
 
-    msg = json_load_file("msg.json", 0, &error);
+    msg = json_load_file("rootMsg.json", 0, &error);
+    // msg = json_load_file("msg.json", 0, &error);
 
     if (!msg) {
         printf("error load msg json\n");
         return 0;
     }
 
-    protos = json_load_file("protos.json", 0, &error);
+    protos = json_load_file("rootProtos.json", 0, &error);
+    // protos = json_load_file("protos.json", 0, &error);
     uint8_t buffer[2000];
     uint8_t buffer1[2000];
 
@@ -42,12 +44,12 @@ int main() {
         if (proto) {
             written = 0;
             memset(buffer, 0, sizeof(buffer));
-            if (!pc_pb_encode(buffer, sizeof(buffer), &written, proto, value)) {
+            if (!pc_pb_encode(buffer, sizeof(buffer), &written, protos, proto, value)) {
                 printf("pb_encode error\n");
                 return 0;
             }
             result = json_object();
-            if (!pc_pb_decode(buffer, written, proto, result)) {
+            if (!pc_pb_decode(buffer, written, protos, proto, result)) {
                 printf("decode error\n");
                 return 0;
             }

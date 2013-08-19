@@ -201,6 +201,7 @@
             'sources': [
               'test/protobuf/test_protobuf.c',
               'src/pb-decode.c',
+              'src/pb-encode.c'
             ],
           },
           {

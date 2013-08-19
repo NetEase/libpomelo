@@ -7,7 +7,7 @@
 #define GATE_HOST "127.0.0.1"
 #define GATE_PORT 3014
 #define MAX_LINE_CHARS 1024
-#define MAX_RUN_NUM 100
+#define MAX_RUN_NUM 5000000
 #define END_STR "bye"
 #define ROBOT_STR "robot"
 
@@ -24,7 +24,7 @@ static void on_chat(pc_client_t *client, const char *event, void *data);
 static void on_add(pc_client_t *client, const char *event, void *data);
 static void on_leave(pc_client_t *client, const char *event, void *data);
 static void on_request_connector_cb(pc_request_t *req, int status, json_t *resp);
-static void on_send_cb(pc_client_t *client, const char *event, void *data);
+static void on_send_cb(pc_request_t *req, int status, json_t *resp);
 static void login(const char *username, const char *Channel);
 static void msg_send(const char *message, const char *rid, const char *from, const char *target);
 
@@ -102,8 +102,12 @@ void on_request_connector_cb(pc_request_t *req, int status, json_t *resp) {
     pc_request_destroy(req);
 }
 
-void on_send_cb(pc_client_t *client, const char *event, void *data) {
-    printf("on_send ok\n");
+void on_send_cb(pc_request_t *req, int status, json_t *resp) {
+    if(status == 0){
+        printf("on_send_cb ok\n");
+    } else {
+        printf("on_send_cb bad\n");
+    }
 }
 
 void on_gate_close(pc_client_t *client, const char *event, void *data) {
