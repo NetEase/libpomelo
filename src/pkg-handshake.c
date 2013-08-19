@@ -12,6 +12,7 @@ static void pc__handshake_ack_cb(uv_write_t* req, int status);
 int pc__handshake_req(pc_client_t *client) {
   json_t *handshake_opts = client->handshake_opts;
   json_t *body = json_object();
+  json_error_t err;
   const char *data = NULL;
 
   if(body == NULL) {
@@ -33,8 +34,17 @@ int pc__handshake_req(pc_client_t *client) {
   json_t *json_version = json_string(PC_VERSION);
   json_object_set(sys, "type", json_type);
   json_object_set(sys, "version", json_version);
+
+  json_t *proto, *protoVersion;
+  proto = json_load_file("protoVersion", 0, &err);
+  if(proto) {
+    protoVersion = json_object_get(proto, "protoVersion");
+    json_object_set(sys, "protoVersion", protoVersion);
+  }
+
   json_decref(json_type);
   json_decref(json_version);
+  json_decref(proto);
 
   if(handshake_opts) {
     json_t *user = json_object_get(handshake_opts, "user");
@@ -122,6 +132,23 @@ int pc__handshake_resp(pc_client_t *client,
       client->client_protos = json_object_get(protos, "client");
       json_incref(client->server_protos);
       json_incref(client->client_protos);
+      json_t *t = json_object();
+      json_object_set(t, "protoVersion", json_object_get(protos, "version"));
+      json_dump_file(t, "protoVersion", 0);
+      json_decref(t);
+      json_dump_file(client->server_protos, "serverProtos", 0);
+      json_dump_file(client->client_protos, "clientProtos", 0);
+    } else {
+      json_t *server_protos;
+      json_t *client_protos;
+      server_protos = json_load_file("serverProtos", 0, &error);
+      if(server_protos) {
+        client->server_protos = server_protos;
+      }
+      client_protos = json_load_file("clientProtos", 0, &error);
+      if(client_protos) {
+        client->client_protos = client_protos;
+      }
     }
   }
 
