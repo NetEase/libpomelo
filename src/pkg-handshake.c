@@ -35,6 +35,14 @@ int pc__handshake_req(pc_client_t *client) {
   json_object_set(sys, "type", json_type);
   json_object_set(sys, "version", json_version);
 
+#ifdef USE_CRYPTO
+  json_t *json_rsa_obj = json_object();
+  json_object_set_new(json_rsa_obj, "rsa_n", json_string(BN_bn2hex(client->rsa_key->n)));
+  json_object_set_new(json_rsa_obj, "rsa_e", json_string(BN_bn2hex(client->rsa_key->e)));
+  json_object_set(sys, "rsa", json_rsa_obj);
+  json_decref(json_rsa_obj);
+#endif
+
   json_t *proto, *protoVersion;
   proto = json_load_file("protoVersion", 0, &err);
   if(proto) {
@@ -42,9 +50,9 @@ int pc__handshake_req(pc_client_t *client) {
     json_object_set(sys, "protoVersion", protoVersion);
   }
 
+  json_decref(proto);
   json_decref(json_type);
   json_decref(json_version);
-  json_decref(proto);
 
   if(handshake_opts) {
     json_t *user = json_object_get(handshake_opts, "user");

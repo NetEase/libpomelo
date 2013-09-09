@@ -82,6 +82,12 @@ void pc__client_init(pc_client_t *client) {
   client->timeout_timer->data = client;
   client->timeout = 0;
 
+#ifdef USE_CRYPTO
+  client->rsa_key = RSA_generate_key(1024, RSA_3, NULL, NULL);
+  client->pkey = EVP_PKEY_new();
+  EVP_PKEY_assign_RSA(client->pkey, client->rsa_key);
+#endif
+
   client->close_async = (uv_async_t *)malloc(sizeof(uv_async_t));
   uv_async_init(client->uv_loop, client->close_async, pc__close_async_cb);
   client->close_async->data = client;
@@ -140,6 +146,12 @@ void pc__client_clear(pc_client_t *client) {
     json_decref(client->client_protos);
     client->client_protos = NULL;
   }
+#ifdef USE_CRYPTO
+  if(client->rsa_key) {
+    RSA_free(client->rsa_key);
+    client->rsa_key = NULL;
+  }
+#endif
 }
 
 void pc_client_stop(pc_client_t *client) {

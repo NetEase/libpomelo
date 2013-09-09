@@ -25,7 +25,10 @@ extern "C" {
 #include "uv.h"
 #include "jansson.h"
 #include "pomelo-private/map.h"
-
+#include "openssl/rsa.h"
+#include "openssl/bn.h"
+#include <openssl/evp.h>
+  
 #define PC_TYPE "c"
 #define PC_VERSION "0.0.1"
 
@@ -251,6 +254,10 @@ struct pc_client_s {
   json_t *code_to_route;
   json_t *server_protos;
   json_t *client_protos;
+#ifdef USE_CRYPTO
+  RSA *rsa_key;
+  EVP_PKEY *pkey;
+#endif
   pc_msg_parse_cb parse_msg;
   pc_msg_parse_done_cb parse_msg_done;
   pc_msg_encode_cb encode_msg;

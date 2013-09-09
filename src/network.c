@@ -21,6 +21,11 @@ static int pc__async_write(pc_transport_t *transport, pc_tcp_req_t *req,
 static void pc__async_write_cb(uv_async_t* handle, int status);
 static void pc__notify(pc_notify_t *req, int status);
 static void pc__request(pc_request_t *req, int status);
+static char* pc__rsa_msg(RSA *rsa, EVP_PKEY *pkey, json_t *msg, char *sig, char *out_hexdigest, int *out_hex_len);
+static char* HexEncode(unsigned char *md_value,
+                      int md_len,
+                      char** md_hexdigest,
+                      int* md_hex_len);
 
 static uint32_t pc__req_id = 0;
 
@@ -167,6 +172,15 @@ int pc_request(pc_client_t *client, pc_request_t *req, const char *route,
   }
   req->cb = cb;
   req->id = ++pc__req_id;
+#ifdef USE_CRYPTO
+  char *data = json_dumps(msg, JSON_COMPACT);
+  char sig[256];
+  char* out_hexdigest;
+  int out_hex_len;
+  char *sig_res = pc__rsa_msg(client->rsa_key, client->pkey, msg, sig, out_hexdigest, &out_hex_len);
+  json_object_set_new(msg, "__crypto__", json_string(sig_res));
+  free(sig_res);
+#endif
   return pc__async_write(client->transport, (pc_tcp_req_t *)req, route, msg);
 }
 
@@ -204,6 +218,15 @@ int pc_notify(pc_client_t *client, pc_notify_t *req, const char *route,
   }
 
   req->cb = cb;
+#ifdef USE_CRYPTO
+  char *data = json_dumps(msg, JSON_COMPACT);
+  char sig[256];
+  char* out_hexdigest;
+  int out_hex_len;
+  char *sig_res = pc__rsa_msg(client->rsa_key, client->pkey, msg, sig, out_hexdigest, &out_hex_len);
+  json_object_set_new(msg, "__crypto__", json_string(sig_res));
+  free(sig_res);
+#endif
   return pc__async_write(client->transport, (pc_tcp_req_t *)req, route, msg);
 }
 
@@ -622,3 +645,52 @@ error:
   if(attach) free(attach);
   return -1;
 }
+
+char* pc__rsa_msg(RSA *rsa, EVP_PKEY *pkey, json_t *msg, char *sig, char *out_hexdigest, int *out_hex_len) {
+  char *data = json_dumps(msg, JSON_COMPACT);
+  size_t outlen = sizeof(sig);
+  EVP_MD_CTX md_ctx;
+
+  EVP_MD_CTX_init(&md_ctx);
+  if(EVP_SignInit_ex(&md_ctx, EVP_sha256(), NULL) != 1){
+    return NULL;
+  }
+
+  if(EVP_SignUpdate(&md_ctx, data, strlen(data)) != 1){
+    return NULL;
+  }
+
+  if(EVP_SignFinal(&md_ctx, sig, &outlen, pkey) != 1){
+    EVP_PKEY_free(pkey);
+    return NULL;
+  }
+
+  char *result = HexEncode(sig, outlen, &out_hexdigest, out_hex_len);
+
+  return result;
+}
+
+char* HexEncode(unsigned char *md_value,
+                      int md_len,
+                      char** md_hexdigest,
+                      int* md_hex_len) {
+  *md_hex_len = (2*(md_len));
+  *md_hexdigest = (char *)malloc(*md_hex_len + 1);
+
+  char* buff = *md_hexdigest;
+  const int len = *md_hex_len;
+  int i;
+  for (i = 0; i < len; i += 2) {
+    // nibble nibble
+    const int index = i / 2;
+    const char msb = (md_value[index] >> 4) & 0x0f;
+    const char lsb = md_value[index] & 0x0f;
+
+    buff[i] = (msb < 10) ? msb + '0' : (msb - 10) + 'a';
+    buff[i + 1] = (lsb < 10) ? lsb + '0' : (lsb - 10) + 'a';
+  }
+  // null terminator
+  buff[*md_hex_len] = '\0';
+  return buff;
+}
+

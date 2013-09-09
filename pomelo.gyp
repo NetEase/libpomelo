@@ -16,7 +16,7 @@
           'JANSSON_DLL_EXPORTS',
           '_WINDLL',
           '_UNICODE',
-          'UNICODE'
+          'UNICODE',
         ],
         'link_settings': {
           'libraries': [
@@ -43,6 +43,11 @@
           'ARCHS': '$(ARCHS_STANDARD_32_64_BIT)',
         },
       }], # TO == "ios"
+      ['use_crypto=="true"',{
+        'defines': [
+          'USE_CRYPTO'
+        ]
+      }]
     ],    # conditions
   },
 
@@ -94,9 +99,17 @@
           'ldflags': [
             '-no-undefined',
             '-export-symbols-regex \'^json_\'',
-            '-version-info 8:0:4',
+            '-version-info 8:0:4'
           ]
-        }]    # OS != "win"
+        }],    # OS != "win"
+        ['use_crypto == "true"', {
+          'dependencies': [
+            'deps/openssl/openssl.gyp:openssl'
+          ],
+          'include_dirs': [
+            './deps/openssl/include'
+          ]
+        }] 
       ],    # conditions
     },
   ],    # targets
@@ -220,6 +233,22 @@
               'src/client.c',
               'src/network.c',
               'src/pkg-handshake.c'
+            ],
+          },
+          {
+            'target_name': 'test_rsa.c',
+            'type': 'executable',
+            'dependencies': [
+              'libpomelo',
+            ],
+            'include_dirs': [
+              'include/',
+              './deps/uv/include',
+              './deps/jansson/src',
+              './deps/openssl/include'
+            ],
+            'sources': [
+              'test/rsa/test_rsa.c',
             ],
           },
         ]
