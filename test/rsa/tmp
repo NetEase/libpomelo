@@ -1,0 +1,11 @@
+['use_crypto == "true"', {
+          'defines':[
+            'USE_CRYPTO'
+          ],
+          'dependencies': [
+            'deps/openssl/openssl.gyp:openssl'
+          ],
+          'include_dirs': [
+            './deps/openssl/include'
+          ]
+        }]
