@@ -8,12 +8,12 @@
 
 /* Wire types. Library user needs these only in encoder callbacks. */
 typedef enum {
+  PB_string = 0,
   PB_uInt32 = 1,
   PB_int32  = 2,
   PB_sInt32 = 3,
   PB_float  = 4,
-  PB_double = 5,
-  PB_string = 6
+  PB_double = 5
 } pb_wire_type_t;
 
 /*Helper Function*/

@@ -142,6 +142,7 @@ static int checkreturn pb_encode_array(pb_ostream_t *stream, const json_t *gprot
         if (!pb_encode_tag_for_field(stream, proto)) {
             return 0;
         }
+
         if (!pb_encode_varint(stream, len)) {
             return 0;
         }
@@ -212,7 +213,6 @@ static int checkreturn pb_encode_proto(pb_ostream_t *stream, const json_t *gprot
     json_t *sub_msg;
     const char *type = json_string_value(_type);
     const char *str;
-
     json_int_t int_val;
     float float_val;
     double double_val;
