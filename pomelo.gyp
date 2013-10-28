@@ -8,6 +8,7 @@
           }
         },
         'defines': [
+          '_WIN32',
           'WIN32',
           '_CRT_NONSTDC_NO_DEPRECATE',
           '_DEBUG',
