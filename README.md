@@ -42,6 +42,13 @@ void on_close(pc_client_t *client, const char *event, void *data) {
 }
 ```
 
+###Pomelo defined listeners
+```
+#define PC_EVENT_DISCONNECT "disconnect"
+#define PC_EVENT_TIMEOUT "timeout"
+#define PC_EVENT_KICK "onKick"
+```
+
 ###Connect to server
 
 ``` c
