@@ -30,6 +30,7 @@ extern "C" {
 #define PC_VERSION "0.0.1"
 
 #define PC_EVENT_DISCONNECT "disconnect"
+#define PC_EVENT_TIMEOUT "timeout"
 #define PC_EVENT_KICK "onKick"
 
 typedef struct pc_client_s pc_client_t;

@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define GATE_HOST "127.0.0.1"
+#define GATE_HOST "192.168.145.136"
 #define GATE_PORT 3014
 #define MAX_LINE_CHARS 1024
 #define MAX_RUN_NUM 5000000
@@ -20,6 +20,7 @@ static pc_client_t *pomelo_client;
 static void on_gate_close(pc_client_t *client, const char *event, void *data);
 static void on_connector_close(pc_client_t *client, const char *event, void *data);
 static void on_disconnect(pc_client_t *client, const char *event, void *data);
+static void on_timeout(pc_client_t *client, const char *event, void *data);
 static void on_chat(pc_client_t *client, const char *event, void *data);
 static void on_add(pc_client_t *client, const char *event, void *data);
 static void on_leave(pc_client_t *client, const char *event, void *data);
@@ -44,6 +45,7 @@ void on_request_gate_cb(pc_request_t *req, int status, json_t *resp) {
         address.sin_addr.s_addr = inet_addr(connectorHost);
 
         // add pomelo events listener
+        pc_add_listener(client, PC_EVENT_TIMEOUT, on_timeout);
         pc_add_listener(client, "disconnect", on_disconnect);
         pc_add_listener(client, "onChat", on_chat);
         pc_add_listener(client, "onAdd", on_add);
@@ -119,6 +121,10 @@ void on_connector_close(pc_client_t *client, const char *event, void *data) {
 }
 
 void on_disconnect(pc_client_t *client, const char *event, void *data) {
+    printf("%s\n", event);
+}
+
+void on_timeout(pc_client_t *client, const char *event, void *data) {
     printf("%s\n", event);
 }
 
@@ -204,6 +210,7 @@ void run_robot() {
         Sleep(1000);
     #else
         sleep(1);
+    #endif
     }
     printf("run_robot done\n");
 }

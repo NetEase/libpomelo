@@ -64,6 +64,7 @@ void pc__timeout_cb(uv_timer_t* timeout_timer, int status) {
     fprintf(stderr, "Pomelo timeout timer error, %s\n",
             uv_err_name(uv_last_error(client->uv_loop)));
   } else {
+    pc_emit_event(client, PC_EVENT_TIMEOUT, NULL);
     fprintf(stderr, "Pomelo client heartbeat timeout.\n");
   }
   pc_client_stop(client);
