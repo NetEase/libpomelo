@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define GATE_HOST "192.168.145.136"
+#define GATE_HOST "127.0.0.1"
 #define GATE_PORT 3014
 #define MAX_LINE_CHARS 1024
 #define MAX_RUN_NUM 5000000
