@@ -138,7 +138,7 @@ static int checkreturn pb_encode_array(pb_ostream_t *stream, const json_t *gprot
     size_t len = json_array_size(array);
     size_t i;
     // simple msg
-    if (pb__get_type(type_text)) {
+    if (pb__get_type(type_text) && pb__get_type(type_text) != PB_string) {
         if (!pb_encode_tag_for_field(stream, proto)) {
             return 0;
         }

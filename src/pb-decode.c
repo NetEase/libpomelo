@@ -296,7 +296,7 @@ static int checkreturn pb_decode_array(pb_istream_t *stream, const json_t *gprot
         need_decref = 1;
     }
 
-    if (pb__get_type(type_text)) {
+    if (pb__get_type(type_text) && pb__get_type(type_text) != PB_string) {
         if (!pb_decode_varint32(stream, &size)) {
             if (need_decref)
                 json_decref(array);
