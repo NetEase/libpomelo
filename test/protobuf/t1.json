@@ -1,0 +1,297 @@
+{
+  "onFight": {
+    "bouts": {
+      "option": "repeated",
+      "type": "Bout",
+      "tag": 1
+    },
+    "msg": {
+      "option": "repeated",
+      "type": "string",
+      "tag": 2
+    },
+    "head": {
+      "option": "optional",
+      "type": "Head",
+      "tag": 3
+    },
+    "report": {
+      "option": "optional",
+      "type": "Report",
+      "tag": 4
+    },
+    "__messages": {
+      "Bout": {
+        "bout": {
+          "option": "required",
+          "type": "uInt32",
+          "tag": 1
+        },
+        "sub": {
+          "option": "repeated",
+          "type": "Sub",
+          "tag": 2
+        },
+        "__messages": {
+          "Sub": {
+            "msg": {
+              "option": "optional",
+              "type": "string",
+              "tag": 1
+            },
+            "script_type": {
+              "option": "optional",
+              "type": "uInt32",
+              "tag": 3
+            },
+            "current_bout": {
+              "option": "optional",
+              "type": "uInt32",
+              "tag": 2
+            },
+            "card_id": {
+              "option": "optional",
+              "type": "uInt32",
+              "tag": 4
+            },
+            "role": {
+              "option": "optional",
+              "type": "uInt32",
+              "tag": 5
+            },
+            "from_id": {
+              "option": "optional",
+              "type": "uInt32",
+              "tag": 6
+            },
+            "buf_type": {
+              "option": "optional",
+              "type": "uInt32",
+              "tag": 7
+            },
+            "to_id": {
+              "option": "optional",
+              "type": "uInt32",
+              "tag": 9
+            },
+            "value": {
+              "option": "optional",
+              "type": "int32",
+              "tag": 10
+            },
+            "skill_id": {
+              "option": "optional",
+              "type": "uInt32",
+              "tag": 11
+            },
+            "rune_id": {
+              "option": "optional",
+              "type": "uInt32",
+              "tag": 12
+            },
+            "targets": {
+              "option": "optional",
+              "type": "uInt32",
+              "tag": 13
+            },
+            "__messages": {},
+            "__tags": {
+              "1": "msg",
+              "2": "current_bout",
+              "3": "script_type",
+              "4": "card_id",
+              "5": "role",
+              "6": "from_id",
+              "7": "buf_type",
+              "9": "to_id",
+              "10": "value",
+              "11": "skill_id",
+              "12": "rune_id",
+              "13": "targets"
+            }
+          }
+        },
+        "__tags": {
+          "1": "bout",
+          "2": "sub"
+        }
+      },
+      "Head": {
+        "atk": {
+          "option": "optional",
+          "type": "Role",
+          "tag": 1
+        },
+        "def": {
+          "option": "optional",
+          "type": "Role",
+          "tag": 2
+        },
+        "first_bout": {
+          "option": "optional",
+          "type": "uInt32",
+          "tag": 3
+        },
+        "__messages": {
+          "Role": {
+            "info": {
+              "option": "required",
+              "type": "Info",
+              "tag": 1
+            },
+            "cards": {
+              "option": "repeated",
+              "type": "Card",
+              "tag": 2
+            },
+            "runes": {
+              "option": "repeated",
+              "type": "Rune",
+              "tag": 3
+            },
+            "strong": {
+              "option": "optional",
+              "type": "Card",
+              "tag": 4
+            },
+            "__messages": {
+              "Info": {
+                "hp": {
+                  "option": "required",
+                  "type": "uInt32",
+                  "tag": 1
+                },
+                "lv": {
+                  "option": "required",
+                  "type": "uInt32",
+                  "tag": 2
+                },
+                "name": {
+                  "option": "required",
+                  "type": "string",
+                  "tag": 3
+                },
+                "img": {
+                  "option": "required",
+                  "type": "uInt32",
+                  "tag": 4
+                },
+                "__messages": {},
+                "__tags": {
+                  "1": "hp",
+                  "2": "lv",
+                  "3": "name",
+                  "4": "img"
+                }
+              },
+              "Card": {
+                "id": {
+                  "option": "required",
+                  "type": "uInt32",
+                  "tag": 1
+                },
+                "type": {
+                  "option": "required",
+                  "type": "uInt32",
+                  "tag": 2
+                },
+                "lv": {
+                  "option": "required",
+                  "type": "uInt32",
+                  "tag": 3
+                },
+                "max_hp": {
+                  "option": "required",
+                  "type": "uInt32",
+                  "tag": 4
+                },
+                "max_atk": {
+                  "option": "required",
+                  "type": "uInt32",
+                  "tag": 5
+                },
+                "wait_bout": {
+                  "option": "required",
+                  "type": "uInt32",
+                  "tag": 6
+                },
+                "__messages": {},
+                "__tags": {
+                  "1": "id",
+                  "2": "type",
+                  "3": "lv",
+                  "4": "max_hp",
+                  "5": "max_atk",
+                  "6": "wait_bout"
+                }
+              },
+              "Rune": {
+                "rune_id": {
+                  "option": "required",
+                  "type": "uInt32",
+                  "tag": 1
+                },
+                "start_num": {
+                  "option": "required",
+                  "type": "uInt32",
+                  "tag": 2
+                },
+                "state": {
+                  "option": "required",
+                  "type": "uInt32",
+                  "tag": 3
+                },
+                "__messages": {},
+                "__tags": {
+                  "1": "rune_id",
+                  "2": "start_num",
+                  "3": "state"
+                }
+              }
+            },
+            "__tags": {
+              "1": "info",
+              "2": "cards",
+              "3": "runes",
+              "4": "strong"
+            }
+          }
+        },
+        "__tags": {
+          "1": "atk",
+          "2": "def",
+          "3": "first_bout"
+        }
+      },
+      "Report": {
+        "exp": {
+          "option": "optional",
+          "type": "uInt32",
+          "tag": 1
+        },
+        "gold": {
+          "option": "optional",
+          "type": "uInt32",
+          "tag": 2
+        },
+        "pass": {
+          "option": "optional",
+          "type": "uInt32",
+          "tag": 3
+        },
+        "__messages": {},
+        "__tags": {
+          "1": "exp",
+          "2": "gold",
+          "3": "pass"
+        }
+      }
+    },
+    "__tags": {
+      "1": "bouts",
+      "2": "msg",
+      "3": "head",
+      "4": "report"
+    }
+  }
+}
