@@ -32,6 +32,7 @@ extern "C" {
 #define PC_EVENT_DISCONNECT "disconnect"
 #define PC_EVENT_TIMEOUT "timeout"
 #define PC_EVENT_KICK "onKick"
+#define USER_DATA_COUNT 5
 
 typedef struct pc_client_s pc_client_t;
 typedef struct pc_listener_s pc_listener_t;
@@ -263,6 +264,9 @@ struct pc_client_s {
   uv_cond_t cond;
   uv_mutex_t listener_mutex;
   uv_thread_t worker;
+    
+  /* customized user data, used in callback */
+  void* userData[USER_DATA_COUNT];
 };
 
 /**
@@ -471,6 +475,38 @@ void pc_remove_listener(pc_client_t *client, const char *event,
  */
 void pc_emit_event(pc_client_t *client, const char *event, void *data);
 
+
+/**
+ * set customized user data, can be used in callback (especially in C++)
+ *
+ * @param client client instance.
+ * @param slot   which slot this user data goes in.
+ * @param data   user data set by user.
+ *
+ */
+void pc_set_user_data(pc_client_t *client, unsigned int slot, void *data);
+  
+/**
+ * get customized user data, can be used in callback (especially in C++)
+ *
+ * @param client client instance.
+ * @param slot   which slot this user data goes in.
+ *
+ */
+void* pc_get_user_data(pc_client_t *client, unsigned int slot);
+    
+    
+/**
+ * get client instance from request instance.
+ *
+ * @param req request instance.
+ *
+ *
+ */
+pc_client_t* pc_get_client(pc_request_t* req);
+    
+    
+    
 /* Don't export the private CPP symbols. */
 #undef PC_TCP_REQ_FIELDS
 #undef PC_REQ_FIELDS
