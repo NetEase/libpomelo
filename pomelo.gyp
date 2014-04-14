@@ -67,6 +67,7 @@
         'include/pomelo-private/map.h',
         'include/pomelo-private/ngx-queue.h',
         'include/pomelo-private/transport.h',
+        'include/pomelo-private/memory.h',
         'include/pomelo-protobuf/pb-util.h',
         'include/pomelo-protobuf/pb.h',
         'include/pomelo-protocol/message.h',
@@ -89,6 +90,7 @@
         'src/transport.c',
         'src/protocol.c',
         'src/thread.c',
+        'src/memory.c',
       ],
       'conditions': [
         ['OS != "win"', {
@@ -202,7 +204,8 @@
             'sources': [
               'test/protobuf/test_protobuf.c',
               'src/pb-decode.c',
-              'src/pb-encode.c'
+              'src/pb-encode.c',
+              'src/pb-util.c'
             ],
           },
           {
