@@ -2,6 +2,7 @@
 #include "pomelo.h"
 #include "pomelo-private/internal.h"
 #include "pomelo-protocol/message.h"
+#include "pomelo-private/memory.h"
 
 /**
  * Default implementation of Pomelo protocol encode and decode.
@@ -230,14 +231,14 @@ pc_buf_t pc__default_msg_encode_cb(pc_client_t *client, uint32_t reqId,
   }
 
   if(body_buf.len > 0) {
-    free(body_buf.base);
+    pc_jsonp_free(body_buf.base);
   }
 
   return msg_buf;
 
 error:
   if(msg_buf.len > 0) free(msg_buf.base);
-  if(body_buf.len > 0) free(body_buf.base);
+  if(body_buf.len > 0) pc_jsonp_free(body_buf.base);
   msg_buf.len = -1;
   return msg_buf;
 }

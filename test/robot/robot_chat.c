@@ -110,6 +110,9 @@ void on_send_cb(pc_request_t *req, int status, json_t *resp) {
     } else {
         printf("on_send_cb bad\n");
     }
+    json_t *msg = req->msg;
+    json_decref(msg);
+    pc_request_destroy(req);
 }
 
 void on_gate_close(pc_client_t *client, const char *event, void *data) {
