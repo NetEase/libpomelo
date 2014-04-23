@@ -29,3 +29,4 @@ gyp-mac-tool
 pomelo.Makefile
 deps/jansson/jansson.Makefile
 deps/uv/uv.Makefile
+tags
