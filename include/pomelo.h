@@ -337,6 +337,9 @@ void pc_client_stop(pc_client_t *client);
 void pc_client_destroy(pc_client_t *client);
 
 #if defined(WITH_TLS)
+int pc_client_lib_init();
+int pc_client_lib_cleanup();
+
 int pc_client_set_tls_ca(pc_client_t* client,
     const char *cafile, const char *capath);
 
@@ -344,9 +347,9 @@ int pc_client_set_tls_cert(pc_client_t* client,
 		const char *certfile, const char *keyfile,
 		int (*pw_callback)(char *buf, int size, int rwflag, void *userdata));
 
-int pc_client_set_tls_opts(pc_client_t* client, int verify, const char* ciphers);
+int pc_client_set_tls_opts(pc_client_t* client, int enable_cert_verify, const char* ciphers);
 
-int pc_client_set_tls_secure(pc_client_t* client, int (*secure_cb)(pc_client_t*, const char** names, int len));
+int pc_client_set_tls_hostname_verify(pc_client_t* client, int (*hostname_verify_cb)(pc_client_t*, const char** names, int len));
 
 int pc_client_set_tls_psk(pc_client_t* client, const char* psk, const char* identity);
 #endif

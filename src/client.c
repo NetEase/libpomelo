@@ -11,6 +11,10 @@
 #include "pomelo-private/common.h"
 #include "pomelo-private/ngx-queue.h"
 
+#if defined(WITH_TLS)
+  #include "tls.h"
+#endif
+
 static void pc__client_init(pc_client_t *client);
 static void pc__close_async_cb(uv_async_t *handle, int status);
 static void pc__release_listeners(pc_map_t *map, const char* key, void *value);
@@ -97,6 +101,10 @@ void pc__client_init(pc_client_t *client) {
   client->encode_msg = pc__default_msg_encode_cb;
   client->encode_msg_done = pc__default_msg_encode_done_cb;
 
+#if defined(WITH_TLS)
+  client->tls = (pc_tls_t*)malloc(sizeof(pc_tls_t));
+  memset(client->tls, 0, sizeof(pc_tls_t));
+#endif
   client->state = PC_ST_INITED;
 }
 

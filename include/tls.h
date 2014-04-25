@@ -1,8 +1,6 @@
 #ifndef PC_TLS_H
 #define PC_TLS_H
 
-#if defined(WITH_TLS)
-
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/bio.h>
@@ -12,6 +10,7 @@
 struct pc_tls_s {
   SSL *ssl;
 	SSL_CTX *ssl_ctx;
+
 	const char *tls_cafile;
 	const char *tls_capath;
 
@@ -19,9 +18,9 @@ struct pc_tls_s {
 	const char *tls_keyfile;
 	int (*tls_pw_callback)(char *buf, int size, int rwflag, void *userdata);
 
-	int tls_cert_verify;
+	int enable_cert_verify;
 	const char *tls_ciphers;
-	int (*secure_cb)(pc_client_t*, const char** names, int len);
+	int (*hostname_verify_cb)(pc_client_t*, const char** names, int len);
 
 	const char *tls_psk;
 	const char *tls_psk_identity;
@@ -30,5 +29,7 @@ struct pc_tls_s {
   BIO* out;
 };
 
-#endif /* WITH_TLS */
+int pc_tls_init(pc_client_t* client);
+int pc_tls_clear(pc_client_t* client);
+
 #endif /* PC_TLS_H */ 
