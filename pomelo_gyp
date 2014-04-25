@@ -1,1 +1,1 @@
-gyp --depth=. pomelo.gyp -Dlibrary=static_library -DTO=pc $@
+gyp --depth=. pomelo.gyp -Dlibrary=static_library -DTO=pc -Dtls_support=true -Dtarget_arch="ia32" $@

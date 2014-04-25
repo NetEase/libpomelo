@@ -99,7 +99,16 @@
             '-export-symbols-regex \'^json_\'',
             '-version-info 8:0:4',
           ]
-        }]    # OS != "win"
+        }],    # OS != "win"
+        [ 'tls_support == "true"', {
+          'defines': ['WITH_TLS'],
+          'include_dirs': [
+            './deps/openssl/openssl/include',
+          ],
+          'dependencies': [
+            'deps/openssl/openssl.gyp:openssl',
+          ],
+        }]
       ],    # conditions
     },
   ],    # targets
@@ -225,6 +234,11 @@
               'src/network.c',
               'src/pkg-handshake.c'
             ],
+            'conditions': [
+              [ 'tls_support == "true"', {
+                'defines': ['WITH_TLS'],
+             }]
+            ],    # conditions
           },
         ]
       }
