@@ -43,6 +43,7 @@ typedef struct pc_notify_s pc_notify_t;
 typedef struct pc_msg_s pc_msg_t;
 typedef struct pc_pkg_parser_s pc_pkg_parser_t;
 typedef uv_buf_t pc_buf_t;
+typedef struct pc_tls_s pc_tls_t;
 
 /**
  * State machine for Pomelo package parser
@@ -263,6 +264,9 @@ struct pc_client_s {
   uv_cond_t cond;
   uv_mutex_t listener_mutex;
   uv_thread_t worker;
+#if defined(WITH_TLS)
+  pc_tls_t* tls;
+#endif
 };
 
 /**
@@ -331,6 +335,21 @@ void pc_client_stop(pc_client_t *client);
  * @param client client instance.
  */
 void pc_client_destroy(pc_client_t *client);
+
+#if defined(WITH_TLS)
+int pc_client_set_tls_ca(pc_client_t* client,
+    const char *cafile, const char *capath);
+
+int pc_client_set_tls_cert(pc_client_t* client,
+		const char *certfile, const char *keyfile,
+		int (*pw_callback)(char *buf, int size, int rwflag, void *userdata));
+
+int pc_client_set_tls_opts(pc_client_t* client, int verify, const char* ciphers);
+
+int pc_client_set_tls_secure(pc_client_t* client, int (*secure_cb)(pc_client_t*, const char** names, int len));
+
+int pc_client_set_tls_psk(pc_client_t* client, const char* psk, const char* identity);
+#endif
 
 /**
  * Join and wait the worker child thread return. It is suitable for the

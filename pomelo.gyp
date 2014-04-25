@@ -73,6 +73,7 @@
         'include/pomelo-protocol/message.h',
         'include/pomelo-protocol/package.h',
         'include/pomelo.h',
+        'include/tls.h',
         'src/client.c',
         'src/common.c',
         'src/listener.c',
@@ -91,6 +92,7 @@
         'src/protocol.c',
         'src/thread.c',
         'src/memory.c',
+        'src/tls.c',
       ],
       'conditions': [
         ['OS != "win"', {
