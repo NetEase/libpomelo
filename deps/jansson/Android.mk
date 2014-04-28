@@ -13,7 +13,7 @@ src/strbuffer.c \
 src/error.c \
 src/value.c \
 src/hashtable.c \
-src/memory.c \
+src/jansson-memory.c \
 src/strconv.c \
 src/pack_unpack.c \
 src/utf.c \
