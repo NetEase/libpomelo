@@ -90,7 +90,7 @@
         'src/transport.c',
         'src/protocol.c',
         'src/thread.c',
-        'src/memory.c',
+        'src/jansson-memory.c',
       ],
       'conditions': [
         ['OS != "win"', {
