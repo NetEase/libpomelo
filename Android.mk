@@ -24,6 +24,7 @@ src/map.c \
 src/network.c \
 src/pb-util.c \
 src/thread.c \
+src/jansson-memory.c
 
 
 
