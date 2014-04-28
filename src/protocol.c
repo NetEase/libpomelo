@@ -2,7 +2,7 @@
 #include "pomelo.h"
 #include "pomelo-private/internal.h"
 #include "pomelo-protocol/message.h"
-#include "pomelo-private/memory.h"
+#include "pomelo-private/jansson-memory.h"
 
 /**
  * Default implementation of Pomelo protocol encode and decode.

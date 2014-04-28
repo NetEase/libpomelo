@@ -3,7 +3,7 @@
 
 #include "jansson.h"
 #include "pomelo.h"
-#include "pomelo-private/memory.h"
+#include "pomelo-private/jansson-memory.h"
 
 /* memory function pointers */
 static json_malloc_t do_malloc = malloc;
