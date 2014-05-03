@@ -98,6 +98,9 @@
             '-no-undefined',
             '-export-symbols-regex \'^json_\'',
             '-version-info 8:0:4',
+          ],
+          'cflags': [
+            '-ggdb',
           ]
         }]    # OS != "win"
       ],    # conditions
@@ -225,6 +228,9 @@
               'src/network.c',
               'src/pkg-handshake.c'
             ],
+           'cflags': [
+             '-ggdb',
+           ]
           },
         ]
       }

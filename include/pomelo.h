@@ -32,6 +32,7 @@ extern "C" {
 #define PC_EVENT_DISCONNECT "disconnect"
 #define PC_EVENT_TIMEOUT "timeout"
 #define PC_EVENT_KICK "onKick"
+#define PC_EVENT_RECONNECT "reconnect"
 
 typedef struct pc_client_s pc_client_t;
 typedef struct pc_listener_s pc_listener_t;
@@ -72,6 +73,7 @@ typedef enum {
   PC_ST_CONNECTING,
   PC_ST_CONNECTED,
   PC_ST_WORKING,
+  PC_ST_DISCONNECTING,
   PC_ST_CLOSED
 } pc_client_state;
 
@@ -263,6 +265,15 @@ struct pc_client_s {
   uv_cond_t cond;
   uv_mutex_t listener_mutex;
   uv_thread_t worker;
+
+  uv_mutex_t state_mutex;
+  uv_timer_t reconnect_timer;
+  int enable_reconnect;
+  int reconnects;
+  int reconnect_delay;
+  int reconnect_delay_max;
+  int enable_exp_backoff;
+  struct sockaddr_in addr;
 };
 
 /**
