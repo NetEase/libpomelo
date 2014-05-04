@@ -328,6 +328,27 @@ struct pc_msg_s {
 pc_client_t *pc_client_new();
 
 /**
+ * Create and init Pomelo client instance with reconnect enable
+ *
+ * @param delay delay time in millisecond
+ * @param delay_max the max delay time 
+ * @param exp_backoff whether enable exponetial backoff
+ *
+ * For example, if 2000 -> delay, 10000 -> delay_max, then the reconnect delay will be
+ *   2, 4, 6, 8, 10, 10, 10 seconds...
+ *   if 2000 -> delay, 30000 -> delay_max enable exponetial backoff, the reconnect delay will be 
+ *   2, 4, 8, 16, 30, 30 seconds...
+ */
+pc_client_t *pc_client_new_with_reconnect(int delay, int delay_max, int exp_backoff);
+
+/**
+ * Disconnect Pomelo client and reset all status back to initialted.
+ *
+ * @param client Pomelo client instance.
+ */
+void pc_client_disconnect(pc_client_t *client);
+
+/**
  * Stop the connection of the client. It is suitable for calling in the child
  * thread and the main thread called the pc_client_join funtion the wait the
  * worker child thread return.
