@@ -270,6 +270,7 @@ struct pc_client_s {
   uv_timer_t reconnect_timer;
   int enable_reconnect;
   int reconnects;
+  int max_reconnects_incr;
   int reconnect_delay;
   int reconnect_delay_max;
   int enable_exp_backoff;

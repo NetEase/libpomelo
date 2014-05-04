@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <assert.h>
+#include <math.h>
 
 #include "pomelo.h"
 #include "pomelo-private/listener.h"
@@ -55,6 +56,12 @@ pc_client_t *pc_client_new_with_reconnect(int delay, int delay_max, int exp_back
   client->reconnect_delay = delay;
   client->reconnect_delay_max = delay_max;
   client->enable_exp_backoff = exp_backoff ? 1 : 0; 
+
+  if(!client->enable_exp_backoff){
+    client->max_reconnects_incr = client->reconnect_delay_max / client->reconnect_delay + 1;
+  } else {
+    client->max_reconnects_incr = (int)log(1.0 * client->reconnect_delay_max / client->reconnect_delay) / log(2) + 1;
+  }
   /* uv_timer_init never fail */
   uv_timer_init(client->uv_loop, &client->reconnect_timer); 
 
@@ -291,10 +298,23 @@ void pc_client_stop(pc_client_t *client) {
 
 void pc__client_reconnect(pc_client_t *client) {
   client->reconnect_timer.data = client;
-  client->reconnects++ ;
-  fprintf(stderr, "reconnect %d", client->reconnects);
   pc__client_reconnect_reset(client);
-  uv_timer_start(&client->reconnect_timer, pc__client_reconnect_timer_cb, client->reconnect_delay, 0);
+  client->reconnects++;
+  int delay = 0;
+  if (client->reconnects >= client->max_reconnects_incr) {
+    delay = client->reconnect_delay_max;
+  } else {
+    if (client->enable_exp_backoff) {
+      delay = client->reconnect_delay << client->reconnects;
+    } else {
+      delay = client->reconnect_delay * client->reconnects;
+    }
+  }
+
+  if (delay > client->reconnect_delay_max) delay = client->reconnect_delay_max;
+
+  fprintf(stderr, "reconnect: %d, delay: %d\n", client->reconnects, delay);
+  uv_timer_start(&client->reconnect_timer, pc__client_reconnect_timer_cb, delay * 1000, 0);
 }
 
 void pc__client_reconnected_cb(pc_connect_t* conn_req, int status) {
@@ -303,19 +323,9 @@ void pc__client_reconnected_cb(pc_connect_t* conn_req, int status) {
   if (status == 0) {
     client->reconnects = 0;
     pc_emit_event(client, PC_EVENT_RECONNECT, client);
-    return ;
-  }
-  int delay;
-  if (client->enable_exp_backoff) {
-    delay = client->reconnect_delay * client->reconnects * client->reconnects;
   } else {
-    delay = client->reconnect_delay * client->reconnects;
+    pc__client_reconnect(client);
   }
-
-  if (delay > client->reconnect_delay_max) delay = client->reconnect_delay_max;
-
-  client->reconnects++;
-  uv_timer_start(&client->reconnect_timer, pc__client_reconnect_timer_cb, delay, 0);
 }
 
 void pc__client_reconnect_timer_cb(uv_timer_t* timer, int status) {

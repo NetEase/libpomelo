@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define GATE_HOST "127.0.0.1"
+#define GATE_HOST "10.240.155.169"
 #define GATE_PORT 3014
 #define MAX_LINE_CHARS 1024
 #define MAX_RUN_NUM 5000000
@@ -49,7 +49,7 @@ void on_request_gate_cb(pc_request_t *req, int status, json_t *resp) {
     } else if (status == 0) {
         connectorHost = json_string_value(json_object_get(resp, "host"));
         connectorPort = json_number_value(json_object_get(resp, "port"));
-        pc_client_t *client = pc_client_new_with_reconnect(1000, 10000, 1);
+        pc_client_t *client = pc_client_new_with_reconnect(1, 30, 1);
         struct sockaddr_in address;
 
         memset(&address, 0, sizeof(struct sockaddr_in));
