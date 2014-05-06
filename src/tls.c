@@ -12,31 +12,6 @@
 
 static int _pc_verify_cert_hostname(X509* cert, pc_client_t* client);
 static int _pc_server_cert_verify(int ok, X509_STORE_CTX* ctx);
-static unsigned int _pc_psk_client_callback(SSL* ssl, const char* hint, 
-        char *identity, unsigned int max_identity_len, unsigned char* psk, unsigned int max_psk_len);
-
-static unsigned int _pc_psk_client_callback(SSL* ssl, const char* hint, 
-        char *identity, unsigned int max_identity_len, unsigned char* psk, unsigned int max_psk_len) 
-{
-    BIGNUM* bn = 0;
-    int len;
-
-    pc_client_t* client = (pc_client_t*)SSL_get_app_data(ssl);
-    if (!client || !client->tls || !client->tls->tls_psk_identity) return 0; 
-    snprintf(identity, max_identity_len, "%s", client->tls->tls_psk_identity);
-
-    if(!BN_hex2bn(&bn, client->tls->tls_psk)) {
-        if(bn) BN_free(bn);
-        return 0;
-    }
-    if(BN_num_bytes(bn) > max_identity_len) {
-        BN_free(bn);
-        return 0;
-    }
-    len = BN_bn2bin(bn, psk);
-    BN_free(bn);
-    return len;
-}
 
 static int _pc_server_cert_verify(int ok, X509_STORE_CTX* ctx) {
     SSL* ssl;
@@ -211,23 +186,6 @@ int pc_client_set_tls_psk(pc_client_t* client, const char* psk, const char* iden
     return 0;
 }
 
-int pc_client_lib_init()
-{
-    srand(time(0));
-    SSL_library_init();
-    SSL_load_error_strings();
-    OpenSSL_add_all_algorithms();
-    return 0;
-}
-
-int pc_client_lib_cleanup() 
-{
-    CRYPTO_cleanup_all_ex_data();
-    EVP_cleanup();
-    ERR_free_strings();
-    return 0;
-}
-
 int pc_tls_init(pc_client_t* client) 
 {
     pc_tls_t* tls;
@@ -294,4 +252,7 @@ next:
     tls->out = BIO_new(BIO_s_mem());
     SSL_set_bio(tls->ssl, tls->in, tls->out);
     return 0;
+}
+
+int pc_tls_clear(pc_client_t* client) {
 }

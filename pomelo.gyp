@@ -101,9 +101,12 @@
             '-export-symbols-regex \'^json_\'',
             '-version-info 8:0:4',
           ],
-          'cflags': [
-            '-ggdb',
-          ]
+        'conditions': [
+          ['debug == "true"', {
+            'cflags': [
+              '-ggdb',
+            ],
+          }]],
         }],    # OS != "win"
         [ 'tls_support == "true"', {
           'defines': ['WITH_TLS'],

@@ -371,22 +371,76 @@ void pc_client_stop(pc_client_t *client);
  */
 void pc_client_destroy(pc_client_t *client);
 
-#if defined(WITH_TLS)
+/**
+ * Init the lib evironment. It must be called before any other libpomelo functions.
+ * It always return 0.
+ */
 int pc_client_lib_init();
+
+/**
+ * Clean up the lib environment. It should be the last function call in your appliction.
+ *
+ * It always return 0.
+ */
 int pc_client_lib_cleanup();
 
+#if defined(WITH_TLS)
+
+/**
+ * Set ca for pomelo client instance.
+ *
+ * @param client pomelo client instance
+ * @cafile  path to a file containing the PEM encoded trusted CA certificate files.
+ * @capath  path to a directory containing the PEM encoded trusted CA certificate files
+ *          Either cafile or capath must not be NULL.
+ * @return  0 for success, -1 for error.        
+ */
 int pc_client_set_tls_ca(pc_client_t* client,
     const char *cafile, const char *capath);
 
+/**
+ * Set certificate and private key for pomelo client instance
+ *
+ * @param client       pomelo client instance
+ * @param certfile     path to a file containing the PEM encoded certificate for pomelo client. It can be
+ *                     NULL to indicate no client certificate will be used.
+ * @param keyfile      path to a file containing the PEM encoded private key for pomelo client
+ *                     if use a client certificate
+ * @param pw_callback  if keyfile is encrypted, set pw_callback to allow your client to pass the correct
+ *                     passwordfor decryption. 
+ */
 int pc_client_set_tls_cert(pc_client_t* client,
 		const char *certfile, const char *keyfile,
 		int (*pw_callback)(char *buf, int size, int rwflag, void *userdata));
 
+/**
+ * Set tls options for pomelo client.
+ *
+ * @param client              pomelo client instance
+ *
+ * @param enable_cert_verify  enable/disable verifying the cert, if it is set to non-zero, 
+ *                            then option SSL_VERIFY_PEER will be set, otherwise SSL_VERIFY_NONE
+ *                            will be used for default.
+ *
+ * @param ciphers             a string describing the ciphers available for use. 
+ *                            Please refer to openssl doc for more detail 
+ */
 int pc_client_set_tls_opts(pc_client_t* client, int enable_cert_verify, const char* ciphers);
 
-int pc_client_set_tls_hostname_verify(pc_client_t* client, int (*hostname_verify_cb)(pc_client_t*, const char** names, int len));
+/**
+ * Set tls hostname verify callback.
+ *
+ * @param client              pomelo client instance.
+ *
+ * @param hostname_verify_cb  Hostname verify callback, it has three parameters:
+ *                              client - pomelo client instance.
+ *                              (const char** name, int len) will store the subject alternative names and common
+ *                              name got from the certificate, the max len will be 32. 
+ *                            This callback will be used only enable_cert_verify is set to non-zero. It should
+ *                            return 1 if hostname verify successfully, otherwise return 0.
+ */
+int pc_client_set_tls_hostname_verify(pc_client_t* client, int (*hostname_verify_cb)(pc_client_t* client, const char** names, int len));
 
-int pc_client_set_tls_psk(pc_client_t* client, const char* psk, const char* identity);
 #endif
 
 /**

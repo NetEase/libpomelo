@@ -1,1 +1,7 @@
-gyp --depth=. pomelo.gyp -Dlibrary=static_library -DTO=pc -Dtls_support=true -Dtarget_arch="ia32" $@
+# set tls_support to true to enable tls support,
+# if enabling tls support, you should set target_arch to right value, for example, ia32 for x86 pc.
+# if target arch is arm, it may need more varibles to be set.
+#
+# set debug to true will add "-ggdb" to cflags
+
+gyp --depth=. pomelo.gyp -Dlibrary=static_library -DTO=pc -Dtls_support=true -Dtarget_arch="ia32" -Ddebug=true $@

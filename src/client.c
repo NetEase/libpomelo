@@ -562,3 +562,25 @@ void pc__close_async_cb(uv_async_t *handle, int status) {
   pc_client_t *client = (pc_client_t *)handle->data;
   pc_client_stop(client);
 }
+
+int pc_client_lib_init()
+{
+#if defined(WITH_TLS)
+    srand(time(0));
+    SSL_library_init();
+    SSL_load_error_strings();
+    OpenSSL_add_all_algorithms();
+#endif
+    return 0;
+}
+
+int pc_client_lib_cleanup() 
+{
+#if defined(WITH_TLS)
+    CRYPTO_cleanup_all_ex_data();
+    EVP_cleanup();
+    ERR_free_strings();
+#endif
+    return 0;
+}
+
