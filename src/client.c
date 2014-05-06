@@ -253,6 +253,11 @@ void pc_client_stop(pc_client_t *client) {
   state = client->state;
   uv_mutex_unlock(&client->state_mutex);
 
+  if (client->enable_reconnect && state != PC_ST_DISCONNECTING) {
+    pc__client_reconnect(client);
+    return;
+  }
+
   if(PC_ST_INITED == state) {
     client->state = PC_ST_CLOSED;
     return;
@@ -261,11 +266,6 @@ void pc_client_stop(pc_client_t *client) {
   if(PC_ST_CLOSED == state) {
     return;
   }
-
-  if (client->enable_reconnect && state != PC_ST_DISCONNECTING) {
-    pc__client_reconnect(client);
-    return;
-  } 
 
   uv_mutex_lock(&client->state_mutex);
   client->state = PC_ST_CLOSED;
@@ -324,7 +324,7 @@ void pc__client_reconnected_cb(pc_connect_t* conn_req, int status) {
     client->reconnects = 0;
     pc_emit_event(client, PC_EVENT_RECONNECT, client);
   } else {
-    pc__client_reconnect(client);
+    pc_client_stop(client);
   }
 }
 
