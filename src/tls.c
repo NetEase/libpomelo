@@ -166,26 +166,6 @@ int pc_client_set_tls_hostname_verify(pc_client_t* client, int (*verify_cb)(pc_c
     return 0;
 }
 
-
-int pc_client_set_tls_psk(pc_client_t* client, const char* psk, const char* identity) {
-    if (!client || !client->tls) return -1;
-
-    if (strspn(psk, "0123456789abcdefABCDEF") < strlen(psk)) {
-        /*psk is invalid*/
-        return -1;
-    }
-    client->tls->tls_psk = strdup(psk);
-    if (!client->tls->tls_psk) return -1;
-
-    client->tls->tls_psk_identity = strdup(identity);
-    if (!client->tls->tls_psk_identity) {
-        free((void*)client->tls->tls_psk);
-        client->tls->tls_psk = 0;
-        return -1;
-    }
-    return 0;
-}
-
 int pc_tls_init(pc_client_t* client) 
 {
     pc_tls_t* tls;
@@ -206,11 +186,6 @@ int pc_tls_init(pc_client_t* client)
         if (!ret) {
             return -1;
         }
-    }
-
-    if (tls->tls_psk && !tls->tls_cafile && !tls->tls_capath) {
-        SSL_CTX_set_psk_client_callback(tls->ssl_ctx, _pc_psk_client_callback);
-        goto next;
     }
 
     if (tls->tls_cafile || tls->tls_capath) {

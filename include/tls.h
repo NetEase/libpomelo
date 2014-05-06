@@ -22,9 +22,6 @@ struct pc_tls_s {
 	const char *tls_ciphers;
 	int (*hostname_verify_cb)(pc_client_t*, const char** names, int len);
 
-	const char *tls_psk;
-	const char *tls_psk_identity;
-
   BIO* in;
   BIO* out;
 };
