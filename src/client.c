@@ -146,6 +146,7 @@ void pc__client_init(pc_client_t *client) {
 #if defined(WITH_TLS)
   client->tls = (pc_tls_t*)malloc(sizeof(pc_tls_t));
   memset(client->tls, 0, sizeof(pc_tls_t));
+  pc_tls_init(client);
 #endif
   client->state = PC_ST_INITED;
 }
@@ -198,9 +199,16 @@ void pc__client_clear(pc_client_t *client) {
     json_decref(client->server_protos);
     client->server_protos = NULL;
   }
+
   if(client->client_protos) {
     json_decref(client->client_protos);
     client->client_protos = NULL;
+  }
+
+  if(client->tls) {
+    pc_tls_clear(client);
+    free(client->tls);
+    client->tls = NULL;
   }
 }
 
