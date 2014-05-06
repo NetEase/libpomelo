@@ -72,13 +72,6 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
                json_t *handshake_opts, pc_connect_cb cb);
 
 /**
- * Disconnect Pomelo client and reset all status back to initialted.
- *
- * @param client Pomelo client instance.
- */
-void pc_disconnect(pc_client_t *client, int reset);
-
-/**
  * Start the uv loop in client.
  *
  * @param  client client instance.

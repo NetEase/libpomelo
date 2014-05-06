@@ -32,6 +32,7 @@ extern "C" {
 #define PC_EVENT_DISCONNECT "disconnect"
 #define PC_EVENT_TIMEOUT "timeout"
 #define PC_EVENT_KICK "onKick"
+#define PC_EVENT_RECONNECT "reconnect"
 
 typedef struct pc_client_s pc_client_t;
 typedef struct pc_listener_s pc_listener_t;
@@ -73,6 +74,7 @@ typedef enum {
   PC_ST_CONNECTING,
   PC_ST_CONNECTED,
   PC_ST_WORKING,
+  PC_ST_DISCONNECTING,
   PC_ST_CLOSED
 } pc_client_state;
 
@@ -264,6 +266,18 @@ struct pc_client_s {
   uv_cond_t cond;
   uv_mutex_t listener_mutex;
   uv_thread_t worker;
+  
+  uv_mutex_t state_mutex;
+
+  uv_timer_t reconnect_timer;
+  int enable_reconnect;
+  int reconnects;
+  int max_reconnects_incr;
+  int reconnect_delay;
+  int reconnect_delay_max;
+  int enable_exp_backoff;
+  struct sockaddr_in addr;
+
 #if defined(WITH_TLS)
   pc_tls_t* tls;
 #endif
@@ -319,6 +333,27 @@ struct pc_msg_s {
  * @return Pomelo client instance
  */
 pc_client_t *pc_client_new();
+
+/**
+ * Create and init Pomelo client instance with reconnect enable
+ *
+ * @param delay delay time in millisecond
+ * @param delay_max the max delay time 
+ * @param exp_backoff whether enable exponetial backoff
+ *
+ * For example, if 2000 -> delay, 10000 -> delay_max, then the reconnect delay will be
+ *   2, 4, 6, 8, 10, 10, 10 seconds...
+ *   if 2000 -> delay, 30000 -> delay_max enable exponetial backoff, the reconnect delay will be 
+ *   2, 4, 8, 16, 30, 30 seconds...
+ */
+pc_client_t *pc_client_new_with_reconnect(int delay, int delay_max, int exp_backoff);
+
+/**
+ * Disconnect Pomelo client and reset all status back to initialted.
+ *
+ * @param client Pomelo client instance.
+ */
+void pc_client_disconnect(pc_client_t *client);
 
 /**
  * Stop the connection of the client. It is suitable for calling in the child

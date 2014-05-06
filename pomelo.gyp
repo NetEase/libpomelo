@@ -91,8 +91,8 @@
         'src/transport.c',
         'src/protocol.c',
         'src/thread.c',
-        'src/memory.c',
         'src/tls.c',
+        'src/jansson-memory.c',
       ],
       'conditions': [
         ['OS != "win"', {
@@ -100,6 +100,9 @@
             '-no-undefined',
             '-export-symbols-regex \'^json_\'',
             '-version-info 8:0:4',
+          ],
+          'cflags': [
+            '-ggdb',
           ]
         }],    # OS != "win"
         [ 'tls_support == "true"', {
@@ -241,6 +244,9 @@
                 'defines': ['WITH_TLS'],
              }]
             ],    # conditions
+           'cflags': [
+             '-ggdb',
+           ]
           },
         ]
       }

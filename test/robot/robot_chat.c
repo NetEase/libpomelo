@@ -29,14 +29,27 @@ static void on_send_cb(pc_request_t *req, int status, json_t *resp);
 static void login(const char *username, const char *Channel);
 static void msg_send(const char *message, const char *rid, const char *from, const char *target);
 
+static void on_reconnect(pc_client_t* client, const char* event, void* data) {
+        const char *route = "connector.entryHandler.enter";
+        json_t *msg = json_object();
+        json_t *str = json_string(user);
+        json_t *channel_str = json_string(channel);
+        json_object_set_new(msg, "username", str);
+        json_object_set_new(msg, "rid", channel_str);
+
+        pc_request_t *request = pc_request_new();
+        printf("%s %s\n", user, channel);
+        pc_request(client, request, route, msg, on_request_connector_cb);
+        fprintf(stderr, "reconnect success");
+}
+
 void on_request_gate_cb(pc_request_t *req, int status, json_t *resp) {
     if (status == -1) {
         printf("Fail to send request to server.\n");
     } else if (status == 0) {
         connectorHost = json_string_value(json_object_get(resp, "host"));
         connectorPort = json_number_value(json_object_get(resp, "port"));
-        pc_client_t *client = pc_client_new();
-
+        pc_client_t *client = pc_client_new_with_reconnect(1, 30, 1);
         struct sockaddr_in address;
 
         memset(&address, 0, sizeof(struct sockaddr_in));
@@ -50,6 +63,7 @@ void on_request_gate_cb(pc_request_t *req, int status, json_t *resp) {
         pc_add_listener(client, "onChat", on_chat);
         pc_add_listener(client, "onAdd", on_add);
         pc_add_listener(client, "onLeave", on_leave);
+        pc_add_listener(client, "reconnect", on_reconnect);
 
         printf("try to connect to connector server %s %d\n", connectorHost, connectorPort);
         // try to connect to server.
