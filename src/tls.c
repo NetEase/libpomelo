@@ -246,27 +246,27 @@ int pc_tls_clear(pc_client_t* client) {
   }
 
   if (tls->tls_capath) {
-    free(tls_capath);
+    free((void*)tls->tls_capath);
     tls->tls_capath = NULL;
   }
 
   if (tls->tls_cafile) {
-    free(tls_cafile);
+    free((void*)tls->tls_cafile);
     tls->tls_cafile = NULL;
   }
 
   if (tls->tls_certfile) {
-    free(tls->tls_certfile);
+    free((void*)tls->tls_certfile);
     tls->tls_certfile = NULL;
   }
 
   if (tls->tls_keyfile) {
-    free(tls->tls_keyfile);
+    free((void*)tls->tls_keyfile);
     tls->tls_keyfile = NULL;
   }
 
   if (tls->tls_ciphers) {
-    free(tls->tls_ciphers);
+    free((void*)tls->tls_ciphers);
     tls->tls_ciphers = NULL;
   }
 
