@@ -130,6 +130,7 @@ void pc__client_init(pc_client_t *client) {
   uv_mutex_init(&client->mutex);
   uv_cond_init(&client->cond);
   uv_mutex_init(&client->listener_mutex);
+  uv_mutex_init(&client->state_mutex);
 
   // init package parser
   client->parse_msg = pc__default_msg_parse_cb;
