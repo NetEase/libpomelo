@@ -16,6 +16,7 @@ src/common.c \
 src/msg-json.c \
 src/pb-decode.c \
 src/pkg-heartbeat.c \
+src/jansson-memory.c \
 src/listener.c \
 src/msg-pb.c \
 src/pb-encode.c \
