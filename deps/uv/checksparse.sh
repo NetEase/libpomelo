@@ -116,6 +116,7 @@ test/test-pass-always.c
 test/test-ping-pong.c
 test/test-pipe-bind-error.c
 test/test-pipe-connect-error.c
+test/test-pipe-server-close.c
 test/test-platform-output.c
 test/test-poll-close.c
 test/test-poll.c
@@ -133,6 +134,7 @@ test/test-stdio-over-pipes.c
 test/test-tcp-bind-error.c
 test/test-tcp-bind6-error.c
 test/test-tcp-close-while-connecting.c
+test/test-tcp-close-accept.c
 test/test-tcp-close.c
 test/test-tcp-connect-error-after-write.c
 test/test-tcp-connect-error.c
@@ -161,6 +163,7 @@ test/test-udp-options.c
 test/test-udp-send-and-recv.c
 test/test-util.c
 test/test-walk-handles.c
+test/test-watcher-cross-stop.c
 "
 
 case `uname -s` in
@@ -195,10 +198,10 @@ Linux)
   SPARSE_FLAGS="$SPARSE_FLAGS -D__linux__=1"
   SOURCES="$SOURCES
            include/uv-private/uv-linux.h
-           src/unix/linux/inotify.c
-           src/unix/linux/linux-core.c
-           src/unix/linux/syscalls.c
-           src/unix/linux/syscalls.h"
+           src/unix/linux-inotify.c
+           src/unix/linux-core.c
+           src/unix/linux-syscalls.c
+           src/unix/linux-syscalls.h"
   ;;
 NetBSD)
   SPARSE_FLAGS="$SPARSE_FLAGS -D__NetBSD__=1"
@@ -222,7 +225,7 @@ SunOS)
   ;;
 esac
 
-for ARCH in __i386__ __x86_64__ __arm__; do
+for ARCH in __i386__ __x86_64__ __arm__ __mips__; do
   $SPARSE $SPARSE_FLAGS -D$ARCH=1 $SOURCES
 done
 

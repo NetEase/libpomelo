@@ -23,6 +23,7 @@ TEST_DECLARE   (platform_output)
 TEST_DECLARE   (callback_order)
 TEST_DECLARE   (run_once)
 TEST_DECLARE   (run_nowait)
+TEST_DECLARE   (loop_stop)
 TEST_DECLARE   (barrier_1)
 TEST_DECLARE   (barrier_2)
 TEST_DECLARE   (barrier_3)
@@ -63,6 +64,7 @@ TEST_DECLARE   (tcp_connect_error_fault)
 TEST_DECLARE   (tcp_connect_timeout)
 TEST_DECLARE   (tcp_close_while_connecting)
 TEST_DECLARE   (tcp_close)
+TEST_DECLARE   (tcp_close_accept)
 TEST_DECLARE   (tcp_flags)
 TEST_DECLARE   (tcp_write_to_half_open_connection)
 TEST_DECLARE   (tcp_unexpected_read)
@@ -86,20 +88,28 @@ TEST_DECLARE   (pipe_bind_error_inval)
 TEST_DECLARE   (pipe_listen_without_bind)
 TEST_DECLARE   (pipe_connect_bad_name)
 TEST_DECLARE   (pipe_connect_to_file)
+TEST_DECLARE   (pipe_server_close)
 TEST_DECLARE   (connection_fail)
 TEST_DECLARE   (connection_fail_doesnt_auto_close)
 TEST_DECLARE   (shutdown_close_tcp)
 TEST_DECLARE   (shutdown_close_pipe)
 TEST_DECLARE   (shutdown_eof)
+TEST_DECLARE   (shutdown_twice)
 TEST_DECLARE   (callback_stack)
 TEST_DECLARE   (error_message)
 TEST_DECLARE   (timer)
+TEST_DECLARE   (timer_init)
 TEST_DECLARE   (timer_again)
 TEST_DECLARE   (timer_start_twice)
+TEST_DECLARE   (timer_order)
+TEST_DECLARE   (timer_huge_timeout)
+TEST_DECLARE   (timer_huge_repeat)
+TEST_DECLARE   (timer_from_check)
 TEST_DECLARE   (idle_starvation)
 TEST_DECLARE   (loop_handles)
 TEST_DECLARE   (get_loadavg)
 TEST_DECLARE   (walk_handles)
+TEST_DECLARE   (watcher_cross_stop)
 TEST_DECLARE   (ref)
 TEST_DECLARE   (idle_ref)
 TEST_DECLARE   (async_ref)
@@ -151,6 +161,9 @@ TEST_DECLARE   (spawn_preserve_env)
 TEST_DECLARE   (spawn_setuid_fails)
 TEST_DECLARE   (spawn_setgid_fails)
 TEST_DECLARE   (spawn_stdout_to_file)
+TEST_DECLARE   (spawn_stdout_and_stderr_to_file)
+TEST_DECLARE   (spawn_auto_unref)
+TEST_DECLARE   (spawn_closed_process_io)
 TEST_DECLARE   (fs_poll)
 TEST_DECLARE   (kill)
 TEST_DECLARE   (fs_file_noent)
@@ -209,10 +222,15 @@ TEST_DECLARE   (listen_with_simultaneous_accepts)
 TEST_DECLARE   (listen_no_simultaneous_accepts)
 TEST_DECLARE   (fs_stat_root)
 #else
+TEST_DECLARE   (emfile)
 TEST_DECLARE   (spawn_setuid_setgid)
 TEST_DECLARE   (we_get_signal)
 TEST_DECLARE   (we_get_signals)
 TEST_DECLARE   (signal_multiple_loops)
+TEST_DECLARE   (closed_fd_events)
+#endif
+#ifdef __APPLE__
+TEST_DECLARE   (osx_select)
 #endif
 HELPER_DECLARE (tcp4_echo_server)
 HELPER_DECLARE (tcp6_echo_server)
@@ -228,6 +246,7 @@ TASK_LIST_START
 #endif
   TEST_ENTRY  (run_once)
   TEST_ENTRY  (run_nowait)
+  TEST_ENTRY  (loop_stop)
   TEST_ENTRY  (barrier_1)
   TEST_ENTRY  (barrier_2)
   TEST_ENTRY  (barrier_3)
@@ -243,6 +262,7 @@ TASK_LIST_START
   TEST_ENTRY  (pipe_connect_bad_name)
   TEST_ENTRY  (pipe_connect_to_file)
 
+  TEST_ENTRY  (pipe_server_close)
   TEST_ENTRY  (tty)
   TEST_ENTRY  (stdio_over_pipes)
   TEST_ENTRY  (ipc_listen_before_write)
@@ -286,6 +306,7 @@ TASK_LIST_START
   TEST_ENTRY  (tcp_connect_timeout)
   TEST_ENTRY  (tcp_close_while_connecting)
   TEST_ENTRY  (tcp_close)
+  TEST_ENTRY  (tcp_close_accept)
   TEST_ENTRY  (tcp_flags)
   TEST_ENTRY  (tcp_write_to_half_open_connection)
   TEST_ENTRY  (tcp_unexpected_read)
@@ -326,14 +347,22 @@ TASK_LIST_START
   TEST_ENTRY  (shutdown_eof)
   TEST_HELPER (shutdown_eof, tcp4_echo_server)
 
+  TEST_ENTRY  (shutdown_twice)
+  TEST_HELPER (shutdown_twice, tcp4_echo_server)
+
   TEST_ENTRY  (callback_stack)
   TEST_HELPER (callback_stack, tcp4_echo_server)
 
   TEST_ENTRY  (error_message)
 
   TEST_ENTRY  (timer)
+  TEST_ENTRY  (timer_init)
   TEST_ENTRY  (timer_again)
   TEST_ENTRY  (timer_start_twice)
+  TEST_ENTRY  (timer_order)
+  TEST_ENTRY  (timer_huge_timeout)
+  TEST_ENTRY  (timer_huge_repeat)
+  TEST_ENTRY  (timer_from_check)
 
   TEST_ENTRY  (idle_starvation)
 
@@ -368,6 +397,8 @@ TASK_LIST_START
 
   TEST_ENTRY  (loop_handles)
   TEST_ENTRY  (walk_handles)
+
+  TEST_ENTRY  (watcher_cross_stop)
 
   TEST_ENTRY  (active)
 
@@ -411,6 +442,9 @@ TASK_LIST_START
   TEST_ENTRY  (spawn_setuid_fails)
   TEST_ENTRY  (spawn_setgid_fails)
   TEST_ENTRY  (spawn_stdout_to_file)
+  TEST_ENTRY  (spawn_stdout_and_stderr_to_file)
+  TEST_ENTRY  (spawn_auto_unref)
+  TEST_ENTRY  (spawn_closed_process_io)
   TEST_ENTRY  (fs_poll)
   TEST_ENTRY  (kill)
 
@@ -422,10 +456,16 @@ TASK_LIST_START
   TEST_ENTRY  (listen_no_simultaneous_accepts)
   TEST_ENTRY  (fs_stat_root)
 #else
+  TEST_ENTRY  (emfile)
   TEST_ENTRY  (spawn_setuid_setgid)
   TEST_ENTRY  (we_get_signal)
   TEST_ENTRY  (we_get_signals)
   TEST_ENTRY  (signal_multiple_loops)
+  TEST_ENTRY  (closed_fd_events)
+#endif
+
+#ifdef __APPLE__
+  TEST_ENTRY (osx_select)
 #endif
 
   TEST_ENTRY  (fs_file_noent)

@@ -107,13 +107,13 @@ static char test_buf[] = "test-buffer\n";
 static void check_permission(const char* filename, int mode) {
   int r;
   uv_fs_t req;
-  struct stat* s;
+  uv_statbuf_t* s;
 
   r = uv_fs_stat(uv_default_loop(), &req, filename, NULL);
   ASSERT(r == 0);
   ASSERT(req.result == 0);
 
-  s = req.ptr;
+  s = &req.statbuf;
 #ifdef _WIN32
   /*
    * On Windows, chmod can only modify S_IWUSR (_S_IWRITE) bit,
@@ -543,7 +543,7 @@ TEST_IMPL(fs_file_loop) {
 }
 
 static void check_utime(const char* path, double atime, double mtime) {
-  struct stat* s;
+  uv_statbuf_t* s;
   uv_fs_t req;
   int r;
 
@@ -551,7 +551,7 @@ static void check_utime(const char* path, double atime, double mtime) {
   ASSERT(r == 0);
 
   ASSERT(req.result == 0);
-  s = req.ptr;
+  s = &req.statbuf;
 
 #if defined(_WIN32) || defined(_AIX)
   ASSERT(s->st_atime == atime);
@@ -1391,7 +1391,8 @@ TEST_IMPL(fs_symlink_dir) {
 #ifdef _WIN32
   ASSERT(((struct stat*)req.ptr)->st_size == strlen(test_dir + 4));
 #else
-  ASSERT(((struct stat*)req.ptr)->st_size == strlen(test_dir));
+  /* st_size has type off_t. Cast to avoid signed/unsigned warnings. */
+  ASSERT((size_t) ((struct stat*)req.ptr)->st_size == strlen(test_dir));
 #endif
   uv_fs_req_cleanup(&req);
 

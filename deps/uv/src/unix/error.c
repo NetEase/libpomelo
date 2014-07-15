@@ -79,6 +79,7 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case EMSGSIZE: return UV_EMSGSIZE;
     case ENAMETOOLONG: return UV_ENAMETOOLONG;
     case EINVAL: return UV_EINVAL;
+    case ENETDOWN: return UV_ENETDOWN;
     case ENETUNREACH: return UV_ENETUNREACH;
     case ECONNABORTED: return UV_ECONNABORTED;
     case ELOOP: return UV_ELOOP;
@@ -103,6 +104,12 @@ uv_err_code uv_translate_sys_error(int sys_errno) {
     case EROFS: return UV_EROFS;
     case ENOMEM: return UV_ENOMEM;
     case EDQUOT: return UV_ENOSPC;
+    case EFBIG: return UV_EFBIG;
+    case ENOPROTOOPT: return UV_ENOPROTOOPT;
+    case ETXTBSY: return UV_ETXTBSY;
+    case ERANGE: return UV_ERANGE;
+    case ENXIO: return UV_ENXIO;
+    case EMLINK: return UV_EMLINK;
     default: return UV_UNKNOWN;
   }
   UNREACHABLE();

@@ -65,6 +65,15 @@ static void uv__run_pending(uv_loop_t* loop);
 static uv_loop_t default_loop_struct;
 static uv_loop_t* default_loop_ptr;
 
+/* Verify that uv_buf_t is ABI-compatible with struct iovec. */
+STATIC_ASSERT(sizeof(uv_buf_t) == sizeof(struct iovec));
+STATIC_ASSERT(sizeof(&((uv_buf_t*) 0)->base) ==
+              sizeof(((struct iovec*) 0)->iov_base));
+STATIC_ASSERT(sizeof(&((uv_buf_t*) 0)->len) ==
+              sizeof(((struct iovec*) 0)->iov_len));
+STATIC_ASSERT(offsetof(uv_buf_t, base) == offsetof(struct iovec, iov_base));
+STATIC_ASSERT(offsetof(uv_buf_t, len) == offsetof(struct iovec, iov_len));
+
 
 uint64_t uv_hrtime(void) {
   return uv__hrtime();
@@ -153,7 +162,12 @@ void uv__make_close_pending(uv_handle_t* handle) {
 
 
 static void uv__finish_close(uv_handle_t* handle) {
-  assert(!uv__is_active(handle));
+  /* Note: while the handle is in the UV_CLOSING state now, it's still possible
+   * for it to be active in the sense that uv__is_active() returns true.
+   * A good example is when the user calls uv_shutdown(), immediately followed
+   * by uv_close(). The handle is considered active at this point because the
+   * completion of the shutdown req is still pending.
+   */
   assert(handle->flags & UV_CLOSING);
   assert(!(handle->flags & UV_CLOSED));
   handle->flags |= UV_CLOSED;
@@ -211,7 +225,7 @@ static void uv__run_closing_handles(uv_loop_t* loop) {
 
 
 int uv_is_closing(const uv_handle_t* handle) {
-  return handle->flags & (UV_CLOSING | UV_CLOSED);
+  return uv__is_closing(handle);
 }
 
 
@@ -259,6 +273,9 @@ int uv_backend_fd(const uv_loop_t* loop) {
 
 
 int uv_backend_timeout(const uv_loop_t* loop) {
+  if (loop->stop_flag != 0)
+    return 0;
+
   if (!uv__has_active_handles(loop) && !uv__has_active_reqs(loop))
     return 0;
 
@@ -280,22 +297,39 @@ static int uv__loop_alive(uv_loop_t* loop) {
 
 
 int uv_run(uv_loop_t* loop, uv_run_mode mode) {
+  int timeout;
   int r;
 
-  if (!uv__loop_alive(loop))
-    return 0;
+  r = uv__loop_alive(loop);
+  while (r != 0 && loop->stop_flag == 0) {
+    UV_TICK_START(loop, mode);
 
-  do {
     uv__update_time(loop);
     uv__run_timers(loop);
     uv__run_idle(loop);
     uv__run_prepare(loop);
     uv__run_pending(loop);
-    uv__io_poll(loop, (mode & UV_RUN_NOWAIT ? 0 : uv_backend_timeout(loop)));
+
+    timeout = 0;
+    if ((mode & UV_RUN_NOWAIT) == 0)
+      timeout = uv_backend_timeout(loop);
+
+    uv__io_poll(loop, timeout);
     uv__run_check(loop);
     uv__run_closing_handles(loop);
     r = uv__loop_alive(loop);
-  } while (r && !(mode & (UV_RUN_ONCE | UV_RUN_NOWAIT)));
+
+    UV_TICK_STOP(loop, mode);
+
+    if (mode & (UV_RUN_ONCE | UV_RUN_NOWAIT))
+      break;
+  }
+
+  /* The if statement lets gcc compile it to a conditional store. Avoids
+   * dirtying a cache line.
+   */
+  if (loop->stop_flag != 0)
+    loop->stop_flag = 0;
 
   return r;
 }
@@ -303,11 +337,6 @@ int uv_run(uv_loop_t* loop, uv_run_mode mode) {
 
 void uv_update_time(uv_loop_t* loop) {
   uv__update_time(loop);
-}
-
-
-int64_t uv_now(uv_loop_t* loop) {
-  return loop->time;
 }
 
 
@@ -566,20 +595,33 @@ static unsigned int next_power_of_two(unsigned int val) {
 
 static void maybe_resize(uv_loop_t* loop, unsigned int len) {
   uv__io_t** watchers;
+  void* fake_watcher_list;
+  void* fake_watcher_count;
   unsigned int nwatchers;
   unsigned int i;
 
   if (len <= loop->nwatchers)
     return;
 
-  nwatchers = next_power_of_two(len);
-  watchers = realloc(loop->watchers, nwatchers * sizeof(loop->watchers[0]));
+  /* Preserve fake watcher list and count at the end of the watchers */
+  if (loop->watchers != NULL) {
+    fake_watcher_list = loop->watchers[loop->nwatchers];
+    fake_watcher_count = loop->watchers[loop->nwatchers + 1];
+  } else {
+    fake_watcher_list = NULL;
+    fake_watcher_count = NULL;
+  }
+
+  nwatchers = next_power_of_two(len + 2) - 2;
+  watchers = realloc(loop->watchers,
+                     (nwatchers + 2) * sizeof(loop->watchers[0]));
 
   if (watchers == NULL)
     abort();
-
   for (i = loop->nwatchers; i < nwatchers; i++)
     watchers[i] = NULL;
+  watchers[nwatchers] = fake_watcher_list;
+  watchers[nwatchers + 1] = fake_watcher_count;
 
   loop->watchers = watchers;
   loop->nwatchers = nwatchers;
@@ -595,15 +637,12 @@ void uv__io_init(uv__io_t* w, uv__io_cb cb, int fd) {
   w->fd = fd;
   w->events = 0;
   w->pevents = 0;
+
+#if defined(UV_HAVE_KQUEUE)
+  w->rcount = 0;
+  w->wcount = 0;
+#endif /* defined(UV_HAVE_KQUEUE) */
 }
-
-
-/* Note that uv__io_start() and uv__io_stop() can't simply remove the watcher
- * from the queue when the new event mask equals the old one. The event ports
- * backend operates exclusively in single-shot mode and needs to rearm all fds
- * before each call to port_getn(). It's up to the individual backends to
- * filter out superfluous event mask modifications.
- */
 
 
 void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
@@ -614,6 +653,20 @@ void uv__io_start(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 
   w->pevents |= events;
   maybe_resize(loop, w->fd + 1);
+
+#if !defined(__sun)
+  /* The event ports backend needs to rearm all file descriptors on each and
+   * every tick of the event loop but the other backends allow us to
+   * short-circuit here if the event mask is unchanged.
+   */
+  if (w->events == w->pevents) {
+    if (w->events == 0 && !ngx_queue_empty(&w->watcher_queue)) {
+      ngx_queue_remove(&w->watcher_queue);
+      ngx_queue_init(&w->watcher_queue);
+    }
+    return;
+  }
+#endif
 
   if (ngx_queue_empty(&w->watcher_queue))
     ngx_queue_insert_tail(&loop->watcher_queue, &w->watcher_queue);
@@ -660,6 +713,9 @@ void uv__io_stop(uv_loop_t* loop, uv__io_t* w, unsigned int events) {
 void uv__io_close(uv_loop_t* loop, uv__io_t* w) {
   uv__io_stop(loop, w, UV__POLLIN | UV__POLLOUT);
   ngx_queue_remove(&w->pending_queue);
+
+  /* Remove stale events for this file descriptor */
+  uv__platform_invalidate_fd(loop, w->fd);
 }
 
 
