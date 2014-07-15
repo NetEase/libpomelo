@@ -2,6 +2,7 @@
 #include "jansson.h"
 #include "pomelo-protocol/message.h"
 #include "pomelo-protobuf/pb.h"
+#include "pomelo-private/jansson-memory.h"
 
 pc_buf_t pc__pb_encode(const json_t *msg, const json_t *gprotos, const json_t *pb_def) {
     pc_buf_t buf, json_buf;
@@ -34,13 +35,13 @@ pc_buf_t pc__pb_encode(const json_t *msg, const json_t *gprotos, const json_t *p
 
     buf.len = written;
 
-    free(json_buf.base);
+    pc_jsonp_free(json_buf.base);
 
     return buf;
 
 error:
     if (buf.len == -1) free(buf.base);
-    if (json_buf.len == -1) free(json_buf.base);
+    if (json_buf.len == -1) pc_jsonp_free(json_buf.base);
 
     return buf;
 }
