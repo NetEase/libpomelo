@@ -37,11 +37,9 @@
 #include <sys/sysctl.h>
 #include <unistd.h>  /* sysconf */
 
-static char *process_title;
-
 /* Forward declarations */
-void uv__cf_loop_runner(void* arg);
-void uv__cf_loop_cb(void* arg);
+static void uv__cf_loop_runner(void* arg);
+static void uv__cf_loop_cb(void* arg);
 
 typedef struct uv__cf_loop_signal_s uv__cf_loop_signal_t;
 struct uv__cf_loop_signal_s {
@@ -75,7 +73,7 @@ int uv__platform_loop_init(uv_loop_t* loop, int default_loop) {
 
   /* Synchronize threads */
   uv_sem_wait(&loop->cf_sem);
-  assert(((volatile CFRunLoopRef) loop->cf_loop) != NULL);
+  assert(ACCESS_ONCE(CFRunLoopRef, loop->cf_loop) != NULL);
 
   return 0;
 }
@@ -86,9 +84,8 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
   uv__cf_loop_signal_t* s;
 
   assert(loop->cf_loop != NULL);
-  CFRunLoopStop(loop->cf_loop);
+  uv__cf_loop_signal(loop, NULL, NULL);
   uv_thread_join(&loop->cf_thread);
-  loop->cf_loop = NULL;
 
   uv_sem_destroy(&loop->cf_sem);
   uv_mutex_destroy(&loop->cf_mutex);
@@ -105,13 +102,13 @@ void uv__platform_loop_delete(uv_loop_t* loop) {
 }
 
 
-void uv__cf_loop_runner(void* arg) {
+static void uv__cf_loop_runner(void* arg) {
   uv_loop_t* loop;
 
   loop = arg;
 
   /* Get thread's loop */
-  *((volatile CFRunLoopRef*)&loop->cf_loop) = CFRunLoopGetCurrent();
+  ACCESS_ONCE(CFRunLoopRef, loop->cf_loop) = CFRunLoopGetCurrent();
 
   CFRunLoopAddSource(loop->cf_loop,
                      loop->cf_cb,
@@ -127,7 +124,7 @@ void uv__cf_loop_runner(void* arg) {
 }
 
 
-void uv__cf_loop_cb(void* arg) {
+static void uv__cf_loop_cb(void* arg) {
   uv_loop_t* loop;
   ngx_queue_t* item;
   ngx_queue_t split_head;
@@ -147,7 +144,12 @@ void uv__cf_loop_cb(void* arg) {
     item = ngx_queue_head(&split_head);
 
     s = ngx_queue_data(item, uv__cf_loop_signal_t, member);
-    s->cb(s->arg);
+
+    /* This was a termination signal */
+    if (s->cb == NULL)
+      CFRunLoopStop(loop->cf_loop);
+    else
+      s->cb(s->arg);
 
     ngx_queue_remove(item);
     free(s);
@@ -254,45 +256,22 @@ void uv_loadavg(double avg[3]) {
 }
 
 
-char** uv_setup_args(int argc, char** argv) {
-  process_title = argc ? strdup(argv[0]) : NULL;
-  return argv;
-}
-
-
-uv_err_t uv_set_process_title(const char* title) {
-  /* TODO implement me */
-  return uv__new_artificial_error(UV_ENOSYS);
-}
-
-
-uv_err_t uv_get_process_title(char* buffer, size_t size) {
-  if (process_title) {
-    strncpy(buffer, process_title, size);
-  } else {
-    if (size > 0) {
-      buffer[0] = '\0';
-    }
-  }
-
-  return uv_ok_;
-}
-
-
 uv_err_t uv_resident_set_memory(size_t* rss) {
-  struct task_basic_info t_info;
-  mach_msg_type_number_t t_info_count = TASK_BASIC_INFO_COUNT;
+  mach_msg_type_number_t count;
+  task_basic_info_data_t info;
+  kern_return_t err;
 
-  int r = task_info(mach_task_self(),
-                    TASK_BASIC_INFO,
-                    (task_info_t)&t_info,
-                    &t_info_count);
-
-  if (r != KERN_SUCCESS) {
-    return uv__new_sys_error(errno);
-  }
-
-  *rss = t_info.resident_size;
+  count = TASK_BASIC_INFO_COUNT;
+  err = task_info(mach_task_self(),
+                  TASK_BASIC_INFO,
+                  (task_info_t) &info,
+                  &count);
+  (void) &err;
+  /* task_info(TASK_BASIC_INFO) cannot really fail. Anything other than
+   * KERN_SUCCESS implies a libuv bug.
+   */
+  assert(err == KERN_SUCCESS);
+  *rss = info.resident_size;
 
   return uv_ok_;
 }

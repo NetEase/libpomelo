@@ -84,12 +84,6 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
     assert(w->fd >= 0);
     assert(w->fd < (int) loop->nwatchers);
 
-    /* Filter out no-op changes. This is for compatibility with the event ports
-     * backend, see uv__io_start().
-     */
-    if (w->events == w->pevents)
-      continue;
-
     if ((w->events & UV__POLLIN) == 0 && (w->pevents & UV__POLLIN) != 0) {
       filter = EVFILT_READ;
       fflags = 0;
@@ -168,9 +162,15 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
 
     nevents = 0;
 
+    assert(loop->watchers != NULL);
+    loop->watchers[loop->nwatchers] = (void*) events;
+    loop->watchers[loop->nwatchers + 1] = (void*) (uintptr_t) nfds;
     for (i = 0; i < nfds; i++) {
       ev = events + i;
       fd = ev->ident;
+      /* Skip invalidated events, see uv__platform_invalidate_fd */
+      if (fd == -1)
+        continue;
       w = loop->watchers[fd];
 
       if (w == NULL) {
@@ -197,9 +197,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       revents = 0;
 
       if (ev->filter == EVFILT_READ) {
-        if (w->events & UV__POLLIN)
+        if (w->pevents & UV__POLLIN) {
           revents |= UV__POLLIN;
-        else {
+          w->rcount = ev->data;
+        } else {
           /* TODO batch up */
           struct kevent events[1];
           EV_SET(events + 0, fd, ev->filter, EV_DELETE, 0, 0, 0);
@@ -210,9 +211,10 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       }
 
       if (ev->filter == EVFILT_WRITE) {
-        if (w->events & UV__POLLOUT)
+        if (w->pevents & UV__POLLOUT) {
           revents |= UV__POLLOUT;
-        else {
+          w->wcount = ev->data;
+        } else {
           /* TODO batch up */
           struct kevent events[1];
           EV_SET(events + 0, fd, ev->filter, EV_DELETE, 0, 0, 0);
@@ -231,6 +233,8 @@ void uv__io_poll(uv_loop_t* loop, int timeout) {
       w->cb(loop, w, revents);
       nevents++;
     }
+    loop->watchers[loop->nwatchers] = NULL;
+    loop->watchers[loop->nwatchers + 1] = NULL;
 
     if (nevents != 0) {
       if (nfds == ARRAY_SIZE(events) && --count != 0) {
@@ -256,6 +260,25 @@ update_timeout:
 
     timeout -= diff;
   }
+}
+
+
+void uv__platform_invalidate_fd(uv_loop_t* loop, int fd) {
+  struct kevent* events;
+  uintptr_t i;
+  uintptr_t nfds;
+
+  assert(loop->watchers != NULL);
+
+  events = (struct kevent*) loop->watchers[loop->nwatchers];
+  nfds = (uintptr_t) loop->watchers[loop->nwatchers + 1];
+  if (events == NULL)
+    return;
+
+  /* Invalidate events with same file descriptor */
+  for (i = 0; i < nfds; i++)
+    if ((int) events[i].ident == fd)
+      events[i].ident = -1;
 }
 
 
@@ -336,10 +359,10 @@ fallback:
 void uv__fs_event_close(uv_fs_event_t* handle) {
 #if defined(__APPLE__)
   if (uv__fsevents_close(handle))
-    uv__io_stop(handle->loop, &handle->event_watcher, UV__POLLIN);
-#else
-  uv__io_stop(handle->loop, &handle->event_watcher, UV__POLLIN);
 #endif /* defined(__APPLE__) */
+  {
+    uv__io_close(handle->loop, &handle->event_watcher);
+  }
 
   uv__handle_stop(handle);
 

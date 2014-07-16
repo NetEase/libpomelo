@@ -113,12 +113,55 @@ static ssize_t uv__fs_futime(uv_fs_t* req) {
   /* utimesat() has nanosecond resolution but we stick to microseconds
    * for the sake of consistency with other platforms.
    */
+  static int no_utimesat;
   struct timespec ts[2];
+  struct timeval tv[2];
+  char path[sizeof("/proc/self/fd/") + 3 * sizeof(int)];
+  int r;
+
+  if (no_utimesat)
+    goto skip;
+
   ts[0].tv_sec  = req->atime;
   ts[0].tv_nsec = (unsigned long)(req->atime * 1000000) % 1000000 * 1000;
   ts[1].tv_sec  = req->mtime;
   ts[1].tv_nsec = (unsigned long)(req->mtime * 1000000) % 1000000 * 1000;
-  return uv__utimesat(req->file, NULL, ts, 0);
+
+  r = uv__utimesat(req->file, NULL, ts, 0);
+  if (r == 0)
+    return r;
+
+  if (errno != ENOSYS)
+    return r;
+
+  no_utimesat = 1;
+
+skip:
+
+  tv[0].tv_sec  = req->atime;
+  tv[0].tv_usec = (unsigned long)(req->atime * 1000000) % 1000000;
+  tv[1].tv_sec  = req->mtime;
+  tv[1].tv_usec = (unsigned long)(req->mtime * 1000000) % 1000000;
+  snprintf(path, sizeof(path), "/proc/self/fd/%d", (int) req->file);
+
+  r = utimes(path, tv);
+  if (r == 0)
+    return r;
+
+  switch (errno) {
+  case ENOENT:
+    if (fcntl(req->file, F_GETFL) == -1 && errno == EBADF)
+      break;
+    /* Fall through. */
+
+  case EACCES:
+  case ENOTDIR:
+    errno = ENOSYS;
+    break;
+  }
+
+  return r;
+
 #elif defined(__APPLE__)                                                      \
     || defined(__DragonFly__)                                                 \
     || defined(__FreeBSD__)                                                   \
@@ -144,11 +187,7 @@ static ssize_t uv__fs_read(uv_fs_t* req) {
 }
 
 
-#if defined(__APPLE__) || defined(__OpenBSD__)
-static int uv__fs_readdir_filter(struct dirent* dent) {
-#else
 static int uv__fs_readdir_filter(const struct dirent* dent) {
-#endif
   return strcmp(dent->d_name, ".") != 0 && strcmp(dent->d_name, "..") != 0;
 }
 
@@ -163,9 +202,12 @@ static ssize_t uv__fs_readdir(uv_fs_t* req) {
   int i;
   int n;
 
+  dents = NULL;
   n = scandir(req->path, &dents, uv__fs_readdir_filter, alphasort);
 
-  if (n == -1 || n == 0)
+  if (n == 0)
+    goto out; /* osx still needs to deallocate some memory */
+  else if (n == -1)
     return n;
 
   len = 0;
@@ -193,7 +235,7 @@ static ssize_t uv__fs_readdir(uv_fs_t* req) {
 
 out:
   saved_errno = errno;
-  {
+  if (dents != NULL) {
     for (i = 0; i < n; i++)
       free(dents[i]);
     free(dents);
@@ -263,7 +305,7 @@ static ssize_t uv__fs_sendfile_emul(uv_fs_t* req) {
    *
    * 1. Read errors are reported only if nsent==0, otherwise we return nsent.
    *    The user needs to know that some data has already been sent, to stop
-   *    him from sending it twice.
+   *    them from sending it twice.
    *
    * 2. Write errors are always reported. Write errors are bad because they
    *    mean data loss: we've read data but now we can't write it out.
@@ -335,6 +377,7 @@ static ssize_t uv__fs_sendfile_emul(uv_fs_t* req) {
       while (n == -1 && errno == EINTR);
 
       if (n == -1 || (pfd.revents & ~POLLOUT) != 0) {
+        errno = EIO;
         nsent = -1;
         goto out;
       }
@@ -396,11 +439,14 @@ static ssize_t uv__fs_sendfile(uv_fs_t* req) {
      * non-blocking mode and not all data could be written. If a non-zero
      * number of bytes have been sent, we don't consider it an error.
      */
-    len = 0;
 
 #if defined(__FreeBSD__)
+    len = 0;
     r = sendfile(in_fd, out_fd, req->off, req->len, NULL, &len, 0);
 #else
+    /* The darwin sendfile takes len as an input for the length to send,
+     * so make sure to initialize it with the caller's value. */
+    len = req->len;
     r = sendfile(in_fd, out_fd, req->off, &len, NULL, 0);
 #endif
 
@@ -555,8 +601,8 @@ int uv_fs_chmod(uv_loop_t* loop,
 int uv_fs_chown(uv_loop_t* loop,
                 uv_fs_t* req,
                 const char* path,
-                int uid,
-                int gid,
+                uv_uid_t uid,
+                uv_gid_t gid,
                 uv_fs_cb cb) {
   INIT(CHOWN);
   PATH;
@@ -588,8 +634,8 @@ int uv_fs_fchmod(uv_loop_t* loop,
 int uv_fs_fchown(uv_loop_t* loop,
                  uv_fs_t* req,
                  uv_file file,
-                 int uid,
-                 int gid,
+                 uv_uid_t uid,
+                 uv_gid_t gid,
                  uv_fs_cb cb) {
   INIT(FCHOWN);
   req->file = file;

@@ -35,8 +35,13 @@ static void uv__udp_io(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
 static void uv__udp_recvmsg(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
 static void uv__udp_sendmsg(uv_loop_t* loop, uv__io_t* w, unsigned int revents);
 static int uv__udp_maybe_deferred_bind(uv_udp_t* handle, int domain);
-static int uv__udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
-    int bufcnt, struct sockaddr* addr, socklen_t addrlen, uv_udp_send_cb send_cb);
+static int uv__send(uv_udp_send_t* req,
+                    uv_udp_t* handle,
+                    uv_buf_t bufs[],
+                    int bufcnt,
+                    struct sockaddr* addr,
+                    socklen_t addrlen,
+                    uv_udp_send_cb send_cb);
 
 
 void uv__udp_close(uv_udp_t* handle) {
@@ -74,7 +79,6 @@ void uv__udp_finish_close(uv_udp_t* handle) {
   }
 
   /* Now tear down the handle. */
-  handle->flags = 0;
   handle->recv_cb = NULL;
   handle->alloc_cb = NULL;
   /* but _do not_ touch close_cb */
@@ -211,7 +215,7 @@ static void uv__udp_recvmsg(uv_loop_t* loop,
     assert(buf.base != NULL);
 
     h.msg_namelen = sizeof(peer);
-    h.msg_iov = (struct iovec*)&buf;
+    h.msg_iov = (void*) &buf;
     h.msg_iovlen = 1;
 
     do {
@@ -282,6 +286,31 @@ static void uv__udp_sendmsg(uv_loop_t* loop,
 }
 
 
+/* On the BSDs, SO_REUSEPORT implies SO_REUSEADDR but with some additional
+ * refinements for programs that use multicast.
+ *
+ * Linux as of 3.9 has a SO_REUSEPORT socket option but with semantics that
+ * are different from the BSDs: it _shares_ the port rather than steal it
+ * from the current listener.  While useful, it's not something we can emulate
+ * on other platforms so we don't enable it.
+ */
+static int uv__set_reuse(int fd) {
+  int yes;
+
+#if defined(SO_REUSEPORT) && !defined(__linux__)
+  yes = 1;
+  if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof(yes)))
+    return -errno;
+#else
+  yes = 1;
+  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)))
+    return -errno;
+#endif
+
+  return 0;
+}
+
+
 static int uv__bind(uv_udp_t* handle,
                     int domain,
                     struct sockaddr* addr,
@@ -289,6 +318,7 @@ static int uv__bind(uv_udp_t* handle,
                     unsigned flags) {
   int saved_errno;
   int status;
+  int err;
   int yes;
   int fd;
 
@@ -317,27 +347,11 @@ static int uv__bind(uv_udp_t* handle,
   }
 
   fd = handle->io_watcher.fd;
-  yes = 1;
-  if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1) {
-    uv__set_sys_error(handle->loop, errno);
+  err = uv__set_reuse(fd);
+  if (err) {
+    uv__set_sys_error(handle->loop, -err);
     goto out;
   }
-
-  /* On the BSDs, SO_REUSEADDR lets you reuse an address that's in the TIME_WAIT
-   * state (i.e. was until recently tied to a socket) while SO_REUSEPORT lets
-   * multiple processes bind to the same address. Yes, it's something of a
-   * misnomer but then again, SO_REUSEADDR was already taken.
-   *
-   * None of the above applies to Linux: SO_REUSEADDR implies SO_REUSEPORT on
-   * Linux and hence it does not have SO_REUSEPORT at all.
-   */
-#ifdef SO_REUSEPORT
-  yes = 1;
-  if (setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof yes) == -1) {
-    uv__set_sys_error(handle->loop, errno);
-    goto out;
-  }
-#endif
 
   if (flags & UV_UDP_IPV6ONLY) {
 #ifdef IPV6_V6ONLY
@@ -408,13 +422,13 @@ static int uv__udp_maybe_deferred_bind(uv_udp_t* handle, int domain) {
 }
 
 
-static int uv__udp_send(uv_udp_send_t* req,
-                        uv_udp_t* handle,
-                        uv_buf_t bufs[],
-                        int bufcnt,
-                        struct sockaddr* addr,
-                        socklen_t addrlen,
-                        uv_udp_send_cb send_cb) {
+static int uv__send(uv_udp_send_t* req,
+                    uv_udp_t* handle,
+                    uv_buf_t bufs[],
+                    int bufcnt,
+                    struct sockaddr* addr,
+                    socklen_t addrlen,
+                    uv_udp_send_cb send_cb) {
   assert(bufcnt > 0);
 
   if (uv__udp_maybe_deferred_bind(handle, addr->sa_family))
@@ -477,7 +491,7 @@ int uv__udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr, unsigned flags) {
 int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
   int saved_errno;
   int status;
-  int yes;
+  int err;
 
   saved_errno = errno;
   status = -1;
@@ -488,27 +502,11 @@ int uv_udp_open(uv_udp_t* handle, uv_os_sock_t sock) {
     goto out;
   }
 
-  yes = 1;
-  if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1) {
-    uv__set_sys_error(handle->loop, errno);
+  err = uv__set_reuse(sock);
+  if (err) {
+    uv__set_sys_error(handle->loop, -err);
     goto out;
   }
-
-  /* On the BSDs, SO_REUSEADDR lets you reuse an address that's in the TIME_WAIT
-   * state (i.e. was until recently tied to a socket) while SO_REUSEPORT lets
-   * multiple processes bind to the same address. Yes, it's something of a
-   * misnomer but then again, SO_REUSEADDR was already taken.
-   *
-   * None of the above applies to Linux: SO_REUSEADDR implies SO_REUSEPORT on
-   * Linux and hence it does not have SO_REUSEPORT at all.
-   */
-#ifdef SO_REUSEPORT
-  yes = 1;
-  if (setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &yes, sizeof yes) == -1) {
-    uv__set_sys_error(handle->loop, errno);
-    goto out;
-  }
-#endif
 
   handle->io_watcher.fd = sock;
   status = 0;
@@ -519,11 +517,13 @@ out:
 }
 
 
-int uv_udp_set_membership(uv_udp_t* handle, const char* multicast_addr,
-  const char* interface_addr, uv_membership membership) {
-
-  int optname;
+int uv_udp_set_membership(uv_udp_t* handle,
+                          const char* multicast_addr,
+                          const char* interface_addr,
+                          uv_membership membership) {
   struct ip_mreq mreq;
+  int optname;
+
   memset(&mreq, 0, sizeof mreq);
 
   if (interface_addr) {
@@ -542,13 +542,15 @@ int uv_udp_set_membership(uv_udp_t* handle, const char* multicast_addr,
     optname = IP_DROP_MEMBERSHIP;
     break;
   default:
-    uv__set_sys_error(handle->loop, EFAULT);
-    return -1;
+    return uv__set_artificial_error(handle->loop, UV_EINVAL);
   }
 
-  if (setsockopt(handle->io_watcher.fd, IPPROTO_IP, optname, (void*) &mreq, sizeof mreq) == -1) {
-    uv__set_sys_error(handle->loop, errno);
-    return -1;
+  if (setsockopt(handle->io_watcher.fd,
+                 IPPROTO_IP,
+                 optname,
+                 &mreq,
+                 sizeof(mreq))) {
+    return uv__set_sys_error(handle->loop, errno);
   }
 
   return 0;
@@ -573,8 +575,13 @@ static int uv__setsockopt_maybe_char(uv_udp_t* handle, int option, int val) {
 
 
 int uv_udp_set_broadcast(uv_udp_t* handle, int on) {
-  if (setsockopt(handle->io_watcher.fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)))
+  if (setsockopt(handle->io_watcher.fd,
+                 SOL_SOCKET,
+                 SO_BROADCAST,
+                 &on,
+                 sizeof(on))) {
     return uv__set_sys_error(handle->loop, errno);
+  }
 
   return 0;
 }
@@ -631,41 +638,41 @@ out:
 }
 
 
-int uv_udp_send(uv_udp_send_t* req,
-                uv_udp_t* handle,
-                uv_buf_t bufs[],
-                int bufcnt,
-                struct sockaddr_in addr,
-                uv_udp_send_cb send_cb) {
-  return uv__udp_send(req,
-                      handle,
-                      bufs,
-                      bufcnt,
-                      (struct sockaddr*)&addr,
-                      sizeof addr,
-                      send_cb);
-}
-
-
-int uv_udp_send6(uv_udp_send_t* req,
+int uv__udp_send(uv_udp_send_t* req,
                  uv_udp_t* handle,
                  uv_buf_t bufs[],
                  int bufcnt,
-                 struct sockaddr_in6 addr,
+                 struct sockaddr_in addr,
                  uv_udp_send_cb send_cb) {
-  return uv__udp_send(req,
-                      handle,
-                      bufs,
-                      bufcnt,
-                      (struct sockaddr*)&addr,
-                      sizeof addr,
-                      send_cb);
+  return uv__send(req,
+                  handle,
+                  bufs,
+                  bufcnt,
+                  (struct sockaddr*)&addr,
+                  sizeof addr,
+                  send_cb);
 }
 
 
-int uv_udp_recv_start(uv_udp_t* handle,
-                      uv_alloc_cb alloc_cb,
-                      uv_udp_recv_cb recv_cb) {
+int uv__udp_send6(uv_udp_send_t* req,
+                  uv_udp_t* handle,
+                  uv_buf_t bufs[],
+                  int bufcnt,
+                  struct sockaddr_in6 addr,
+                  uv_udp_send_cb send_cb) {
+  return uv__send(req,
+                  handle,
+                  bufs,
+                  bufcnt,
+                  (struct sockaddr*)&addr,
+                  sizeof addr,
+                  send_cb);
+}
+
+
+int uv__udp_recv_start(uv_udp_t* handle,
+                       uv_alloc_cb alloc_cb,
+                       uv_udp_recv_cb recv_cb) {
   if (alloc_cb == NULL || recv_cb == NULL) {
     uv__set_artificial_error(handle->loop, UV_EINVAL);
     return -1;
@@ -689,7 +696,7 @@ int uv_udp_recv_start(uv_udp_t* handle,
 }
 
 
-int uv_udp_recv_stop(uv_udp_t* handle) {
+int uv__udp_recv_stop(uv_udp_t* handle) {
   uv__io_stop(handle->loop, &handle->io_watcher, UV__POLLIN);
 
   if (!uv__io_active(&handle->io_watcher, UV__POLLOUT))
