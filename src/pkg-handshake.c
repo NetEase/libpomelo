@@ -10,6 +10,9 @@ static int pc__handshake_ack(pc_client_t *client);
 static void pc__handshake_req_cb(uv_write_t* req, int status);
 static void pc__handshake_ack_cb(uv_write_t* req, int status);
 
+static void pc__load_file(pc_client_t *client, const char *name, json_t **dest);
+static void pc__dump_file(pc_client_t *client, const char *name, json_t *src);
+
 int pc__handshake_req(pc_client_t *client) {
   json_t *handshake_opts = client->handshake_opts;
   json_t *body = json_object();
@@ -36,12 +39,17 @@ int pc__handshake_req(pc_client_t *client) {
   json_object_set(sys, "type", json_type);
   json_object_set(sys, "version", json_version);
 
-  json_t *proto, *protoVersion;
-  proto = json_load_file("protoVersion", 0, &err);
-  if(proto) {
-    protoVersion = json_object_get(proto, "protoVersion");
-    json_object_set(sys, "protoVersion", protoVersion);
+  json_t *proto;
+  if(!client->proto_ver) {
+    pc__load_file(client, "protoVersion", &proto);
+    if(proto) {
+      client->proto_ver = json_object_get(proto, "protoVersion");
+      json_object_set(sys, "protoVersion", client->proto_ver);
+    }
+  } else {
+    json_object_set(sys, "protoVersion", client->proto_ver);
   }
+
 
   json_decref(json_type);
   json_decref(json_version);
@@ -126,29 +134,48 @@ int pc__handshake_resp(pc_client_t *client,
     }
 
     // setup protobuf data definition
-    json_t *protos = json_object_get(sys, "protos");
+    json_t *useProto = json_object_get(sys, "useProto");
+    if(useProto) {
+      json_t *protos = json_object_get(sys, "protos");
+      if(protos) {
+        if(client->server_protos) {
+          json_decref(client->server_protos);
+        }
+        client->server_protos = json_object_get(protos, "server");
+        if(client->client_protos) {
+          json_decref(client->client_protos);
+        }
+        client->client_protos = json_object_get(protos, "client");
+        json_incref(client->server_protos);
+        json_incref(client->client_protos);
 
-    if(protos) {
-      client->server_protos = json_object_get(protos, "server");
-      client->client_protos = json_object_get(protos, "client");
-      json_incref(client->server_protos);
-      json_incref(client->client_protos);
-      json_t *t = json_object();
-      json_object_set(t, "protoVersion", json_object_get(protos, "version"));
-      json_dump_file(t, "protoVersion", 0);
-      json_decref(t);
-      json_dump_file(client->server_protos, "serverProtos", 0);
-      json_dump_file(client->client_protos, "clientProtos", 0);
-    } else {
-      json_t *server_protos;
-      json_t *client_protos;
-      server_protos = json_load_file("serverProtos", 0, &error);
-      if(server_protos) {
-        client->server_protos = server_protos;
+        json_t *t = json_object();
+        json_object_set(t, "protoVersion", json_object_get(protos, "version"));
+        pc__dump_file(client, "protoVersion", t);
+        json_decref(t);
+
+        pc__dump_file(client, "serverProtos", client->server_protos);
+        pc__dump_file(client, "clientProtos", client->client_protos);
+      } else {
+        if(!client->server_protos) {
+          pc__load_file(client, "serverProtos", &client->server_protos);
+        }
+        if(!client->client_protos) {
+          pc__load_file(client, "clientProtos", &client->client_protos);
+        }
       }
-      client_protos = json_load_file("clientProtos", 0, &error);
-      if(client_protos) {
-        client->client_protos = client_protos;
+    } else {
+      if(client->server_protos) {
+        json_decref(client->server_protos);
+        client->server_protos = NULL;
+      }
+      if(client->client_protos) {
+        json_decref(client->client_protos);
+        client->client_protos = NULL;
+      }
+      if(client->proto_ver) {
+        json_decref(client->proto_ver);
+        client->proto_ver = NULL;
       }
     }
   }
@@ -248,5 +275,40 @@ static void pc__handshake_ack_cb(uv_write_t* req, int status) {
     pc_connect_t *conn_req = client->conn_req;
     client->conn_req = NULL;
     conn_req->cb(conn_req, status);
+  }
+}
+
+static void pc__load_file(pc_client_t *client, const char *name, json_t **dest) {
+  json_error_t err;
+  if(client->proto_event_cb) {
+    client->proto_event_cb(client, "read", name, (void*)dest);
+  } else if(client->proto_read_dir) {
+    int offset = 0;
+    char path[100] = {0};
+    memcpy(path, client->proto_read_dir, 0);
+    offset += strlen(client->proto_read_dir);
+    memcpy(path, "/", offset);
+    offset += 1;
+    memcpy(path, name, offset);
+    *dest = json_load_file(path, 0, &err);
+  } else {
+    *dest = json_load_file(name, 0, &err);
+  }
+}
+
+static void pc__dump_file(pc_client_t *client, const char *name, json_t *src) {
+  if(client->proto_event_cb) {
+    client->proto_event_cb(client, "write", name, (void*)src);
+  } else if(client->proto_write_dir) {
+    int offset = 0;
+    char path[100] = {0};
+    memcpy(path, client->proto_read_dir, 0);
+    offset += strlen(client->proto_read_dir);
+    memcpy(path, "/", offset);
+    offset += 1;
+    memcpy(path, name, offset);
+    json_dump_file(src, path, 0);
+  } else {
+    json_dump_file(src, name, 0);
   }
 }
