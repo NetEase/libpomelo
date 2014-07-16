@@ -57,6 +57,8 @@ pc_client_t *pc_client_new_with_reconnect(int delay, int delay_max, int exp_back
   client->reconnect_delay_max = delay_max;
   client->enable_exp_backoff = exp_backoff ? 1 : 0; 
 
+  srand(time(0));
+
   if(!client->enable_exp_backoff){
     client->max_reconnects_incr = client->reconnect_delay_max / client->reconnect_delay + 1;
   } else {
@@ -313,6 +315,8 @@ void pc__client_reconnect(pc_client_t *client) {
   }
 
   if (delay > client->reconnect_delay_max) delay = client->reconnect_delay_max;
+
+  delay = rand() % delay + delay;
 
   fprintf(stderr, "reconnect: %d, delay: %d\n", client->reconnects, delay);
   uv_timer_start(&client->reconnect_timer, pc__client_reconnect_timer_cb, delay * 1000, 0);
