@@ -41,13 +41,13 @@ int pc__handshake_req(pc_client_t *client) {
 
   json_t *proto;
   if(!client->proto_ver) {
-    pc__load_file(client, "protoVersion", &proto);
+    pc__load_file(client, PC_PROTO_VERSION, &proto);
     if(proto) {
-      client->proto_ver = json_object_get(proto, "protoVersion");
-      json_object_set(sys, "protoVersion", client->proto_ver);
+      client->proto_ver = json_object_get(proto, PC_PROTO_VERSION);
+      json_object_set(sys, PC_PROTO_VERSION, client->proto_ver);
     }
   } else {
-    json_object_set(sys, "protoVersion", client->proto_ver);
+    json_object_set(sys, PC_PROTO_VERSION, client->proto_ver);
   }
 
 
@@ -150,18 +150,18 @@ int pc__handshake_resp(pc_client_t *client,
         json_incref(client->client_protos);
 
         json_t *t = json_object();
-        json_object_set(t, "protoVersion", json_object_get(protos, "version"));
-        pc__dump_file(client, "protoVersion", t);
+        json_object_set(t, PC_PROTO_VERSION, json_object_get(protos, "version"));
+        pc__dump_file(client, PC_PROTO_VERSION, t);
         json_decref(t);
 
-        pc__dump_file(client, "serverProtos", client->server_protos);
-        pc__dump_file(client, "clientProtos", client->client_protos);
+        pc__dump_file(client, PC_PROTO_SERVER, client->server_protos);
+        pc__dump_file(client, PC_PROTO_CLIENT, client->client_protos);
       } else {
         if(!client->server_protos) {
-          pc__load_file(client, "serverProtos", &client->server_protos);
+          pc__load_file(client, PC_PROTO_SERVER, &client->server_protos);
         }
         if(!client->client_protos) {
-          pc__load_file(client, "clientProtos", &client->client_protos);
+          pc__load_file(client, PC_PROTO_CLIENT, &client->client_protos);
         }
       }
     } else {
@@ -281,7 +281,7 @@ static void pc__handshake_ack_cb(uv_write_t* req, int status) {
 static void pc__load_file(pc_client_t *client, const char *name, json_t **dest) {
   json_error_t err;
   if(client->proto_event_cb) {
-    client->proto_event_cb(client, "read", name, (void*)dest);
+    client->proto_event_cb(client, PC_PROTO_OP_READ, name, (void*)dest);
   } else if(client->proto_read_dir) {
     int offset = 0;
     char path[100] = {0};
@@ -298,7 +298,7 @@ static void pc__load_file(pc_client_t *client, const char *name, json_t **dest) 
 
 static void pc__dump_file(pc_client_t *client, const char *name, json_t *src) {
   if(client->proto_event_cb) {
-    client->proto_event_cb(client, "write", name, (void*)src);
+    client->proto_event_cb(client, PC_PROTO_OP_WRITE, name, (void*)src);
   } else if(client->proto_write_dir) {
     int offset = 0;
     char path[100] = {0};

@@ -33,6 +33,10 @@ extern "C" {
 #define PC_EVENT_TIMEOUT "timeout"
 #define PC_EVENT_KICK "onKick"
 
+#define PC_PROTO_VERSION "protoVersion"
+#define PC_PROTO_CLIENT "clientProtos"
+#define PC_PROTO_SERVER "serverProtos"
+
 typedef struct pc_client_s pc_client_t;
 typedef struct pc_listener_s pc_listener_t;
 typedef struct pc_req_s pc_req_t;
@@ -93,6 +97,15 @@ typedef enum {
   PC_TP_ST_WORKING,
   PC_TP_ST_CLOSED
 } pc_transport_state;
+
+/**
+ * operation for proto files.
+ */
+typedef enum {
+  PC_PROTO_OP_READ = 1,
+  PC_PROTO_OP_WRITE,
+  PC_PROTO_OP_UNKONWN
+} pc_proto_op;
 
 /**
  * Callbacks
@@ -186,7 +199,7 @@ typedef pc_buf_t (*pc_msg_encode_cb)(pc_client_t *client, uint32_t reqId,
  */
 typedef void (*pc_msg_encode_done_cb)(pc_client_t *client, pc_buf_t buf);
 
-typedef void (*pc_proto_cb)(pc_client_t *client, const char* event, const char* fileName, void *data);
+typedef void (*pc_proto_cb)(pc_client_t *client, pc_proto_op op, const char* fileName, void *data);
 
 /**
  * Simple structure for memory block.
