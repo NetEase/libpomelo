@@ -197,6 +197,10 @@ void pc__client_clear(pc_client_t *client) {
     json_decref(client->client_protos);
     client->client_protos = NULL;
   }
+  if(client->proto_ver) {
+    json_decref(client->proto_ver);
+    client->proto_ver = NULL;
+  }
 }
 
 void pc__client_reconnect_reset(pc_client_t *client) {
@@ -558,4 +562,31 @@ void pc__release_requests(pc_map_t *map, const char* key, void *value) {
 void pc__close_async_cb(uv_async_t *handle, int status) {
   pc_client_t *client = (pc_client_t *)handle->data;
   pc_client_stop(client);
+}
+
+void pc_proto_init(pc_client_t *client, const char *proto_read_dir, const char *proto_write_dir) {
+  if(!client) {
+    fprintf(stderr, "Fail to init protobuf, the client is null.\n");
+    return;
+  }
+  client->proto_read_dir = proto_read_dir;
+  client->proto_write_dir = proto_write_dir;
+}
+
+void pc_proto_init2(pc_client_t *client, pc_proto_cb proto_cb) {
+  if(!client) {
+    fprintf(stderr, "Fail to init protobuf, the client is null.\n");
+    return;
+  }
+  client->proto_event_cb = proto_cb;
+}
+
+void pc_proto_copy(pc_client_t *client, json_t *proto_ver, json_t *client_protos, json_t *server_protos) {
+  if (!client) {
+    fprintf(stderr, "Fail to copy protobuf info, one client is null.\n");
+    return;
+  }
+  client->proto_ver = proto_ver;
+  client->client_protos = client_protos;
+  client->server_protos = server_protos;
 }

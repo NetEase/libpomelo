@@ -34,6 +34,10 @@ extern "C" {
 #define PC_EVENT_KICK "onKick"
 #define PC_EVENT_RECONNECT "reconnect"
 
+#define PC_PROTO_VERSION "protoVersion"
+#define PC_PROTO_CLIENT "clientProtos"
+#define PC_PROTO_SERVER "serverProtos"
+
 typedef struct pc_client_s pc_client_t;
 typedef struct pc_listener_s pc_listener_t;
 typedef struct pc_req_s pc_req_t;
@@ -95,6 +99,15 @@ typedef enum {
   PC_TP_ST_WORKING,
   PC_TP_ST_CLOSED
 } pc_transport_state;
+
+/**
+ * operation for proto files.
+ */
+typedef enum {
+  PC_PROTO_OP_READ = 1,
+  PC_PROTO_OP_WRITE,
+  PC_PROTO_OP_UNKONWN
+} pc_proto_op;
 
 /**
  * Callbacks
@@ -188,6 +201,8 @@ typedef pc_buf_t (*pc_msg_encode_cb)(pc_client_t *client, uint32_t reqId,
  */
 typedef void (*pc_msg_encode_done_cb)(pc_client_t *client, pc_buf_t buf);
 
+typedef void (*pc_proto_cb)(pc_client_t *client, pc_proto_op op, const char* fileName, void *data);
+
 /**
  * Simple structure for memory block.
  * The pc_buf_s is cheap and could be passed by value.
@@ -254,6 +269,10 @@ struct pc_client_s {
   json_t *code_to_route;
   json_t *server_protos;
   json_t *client_protos;
+  json_t *proto_ver;
+  const char *proto_read_dir;
+  const char *proto_write_dir;
+  pc_proto_cb proto_event_cb;
   pc_msg_parse_cb parse_msg;
   pc_msg_parse_done_cb parse_msg_done;
   pc_msg_encode_cb encode_msg;
@@ -511,6 +530,27 @@ void pc_emit_event(pc_client_t *client, const char *event, void *data);
  * @param free_fn   free function.
  */
 void pc_json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn);
+
+/**
+ * Init protobuf settings, set the read/write proto files directorys
+ *
+ * @param client 		    client instance.
+ * @param proto_read_dir    directory of proto files to read.
+ * @param proto_write_dir   directory of proto files to write.
+ */
+void pc_proto_init(pc_client_t *client, const char *proto_read_dir, const char *proto_write_dir);
+
+/**
+ * Init protobuf settings, set the callback for read/write proto files
+ *
+ * @param client    client instance.
+ * @param proto_cb  callback when read or write proto files.
+ */
+void pc_proto_init2(pc_client_t *client, pc_proto_cb proto_cb);
+
+void pc_proto_copy(pc_client_t *client, json_t *proto_ver, json_t *client_protos, json_t *server_protos);
+
+
 
 /* Don't export the private CPP symbols. */
 #undef PC_TCP_REQ_FIELDS
