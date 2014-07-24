@@ -261,6 +261,11 @@ void pc_client_stop(pc_client_t *client) {
   uv_mutex_unlock(&client->state_mutex);
 
   if (client->enable_reconnect && state != PC_ST_DISCONNECTING) {
+    // still reconnecting, just return
+    if (client->reconnecting){
+      return;
+    }
+
     pc__client_reconnect(client);
     return;
   }
@@ -304,6 +309,7 @@ void pc_client_stop(pc_client_t *client) {
 }
 
 void pc__client_reconnect(pc_client_t *client) {
+  client->reconnecting = 1;
   client->reconnect_timer.data = client;
   pc__client_reconnect_reset(client);
   client->reconnects++;
@@ -328,6 +334,7 @@ void pc__client_reconnect(pc_client_t *client) {
 
 void pc__client_reconnected_cb(pc_connect_t* conn_req, int status) {
   pc_client_t* client = conn_req->client;
+  client->reconnecting = 0;
   uv_timer_stop(&client->reconnect_timer);
   if (status == 0) {
     client->reconnects = 0;
@@ -350,6 +357,7 @@ void pc__client_reconnect_timer_cb(uv_timer_t* timer, int status) {
   if(pc_connect(client, conn_req, NULL, pc__client_reconnected_cb)) {
     fprintf(stderr, "Fail to connect to server.\n");
     pc_connect_req_destroy(conn_req);
+    client->reconnecting = 0;
     pc_client_stop(client);
   }
 }
