@@ -5,15 +5,9 @@ extern "C" {
 #endif
 
 #ifdef _WIN32
-  /* Windows - set up dll import/export decorators. */
 # if defined(BUILDING_PC_SHARED)
-    /* Building shared library. */
 #   define PC_EXTERN __declspec(dllexport)
-# elif defined(USING_PC_SHARED)
-    /* Using shared library. */
-#   define PC_EXTERN __declspec(dllimport)
 # else
-    /* Building static library. */
 #   define PC_EXTERN /* nothing */
 # endif
 #elif __GNUC__ >= 4
@@ -27,7 +21,7 @@ extern "C" {
 #include "pomelo-private/map.h"
 
 #define PC_TYPE "c"
-#define PC_VERSION "0.0.1"
+#define PC_VERSION "0.1.2"
 
 #define PC_EVENT_DISCONNECT "disconnect"
 #define PC_EVENT_TIMEOUT "timeout"
@@ -346,7 +340,7 @@ struct pc_msg_s {
  *
  * @return Pomelo client instance
  */
-pc_client_t *pc_client_new();
+PC_EXTERN pc_client_t *pc_client_new();
 
 /**
  * Create and init Pomelo client instance with reconnect enable
@@ -360,14 +354,14 @@ pc_client_t *pc_client_new();
  *   if 2000 -> delay, 30000 -> delay_max enable exponetial backoff, the reconnect delay will be 
  *   2, 4, 8, 16, 30, 30 seconds...
  */
-pc_client_t *pc_client_new_with_reconnect(int delay, int delay_max, int exp_backoff);
+PC_EXTERN pc_client_t *pc_client_new_with_reconnect(int delay, int delay_max, int exp_backoff);
 
 /**
  * Disconnect Pomelo client and reset all status back to initialted.
  *
  * @param client Pomelo client instance.
  */
-void pc_client_disconnect(pc_client_t *client);
+PC_EXTERN void pc_client_disconnect(pc_client_t *client);
 
 /**
  * Stop the connection of the client. It is suitable for calling in the child
@@ -376,14 +370,14 @@ void pc_client_disconnect(pc_client_t *client);
  *
  * @param client client instance.
  */
-void pc_client_stop(pc_client_t *client);
+PC_EXTERN void pc_client_stop(pc_client_t *client);
 
 /**
  * Destroy and disconnect the connection of the client instance.
  *
  * @param client client instance.
  */
-void pc_client_destroy(pc_client_t *client);
+PC_EXTERN void pc_client_destroy(pc_client_t *client);
 
 /**
  * Join and wait the worker child thread return. It is suitable for the
@@ -393,21 +387,21 @@ void pc_client_destroy(pc_client_t *client);
  * @param  client client instance.
  * @return        0 for ok or error code for error.
  */
-int pc_client_join(pc_client_t *client);
+PC_EXTERN int pc_client_join(pc_client_t *client);
 
 /**
  * Create and initiate a request instance.
  *
  * @return     req request instance
  */
-pc_request_t *pc_request_new();
+PC_EXTERN pc_request_t *pc_request_new();
 
 /**
  * Destroy and release inner resource of a request instance.
  *
  * @param req request instance to be destroied.
  */
-void pc_request_destroy(pc_request_t *req);
+PC_EXTERN void pc_request_destroy(pc_request_t *req);
 
 /**
  * Connect the client to the server which would create a worker child thread
@@ -417,7 +411,7 @@ void pc_request_destroy(pc_request_t *req);
  * @param  addr   server address.
  * @return        0 or -1.
  */
-int pc_client_connect(pc_client_t *client, struct sockaddr_in *addr);
+PC_EXTERN int pc_client_connect(pc_client_t *client, struct sockaddr_in *addr);
 
 
 /*
@@ -429,7 +423,7 @@ int pc_client_connect(pc_client_t *client, struct sockaddr_in *addr);
  * @param conn_req connect request which are allocated and initialized by pc_connect_req_new
  * @return 0 or -1
  */
- int pc_client_connect2(pc_client_t *client, pc_connect_t *conn_req, pc_connect_cb cb);
+PC_EXTERN  int pc_client_connect2(pc_client_t *client, pc_connect_t *conn_req, pc_connect_cb cb);
 
 
 /*
@@ -439,7 +433,7 @@ int pc_client_connect(pc_client_t *client, struct sockaddr_in *addr);
  * @param addr address to which the connection is made
  * @return an instance of pc_connect_t, which should be released manually by user.
  */
-pc_connect_t* pc_connect_req_new(struct sockaddr_in *addr);
+PC_EXTERN pc_connect_t* pc_connect_req_new(struct sockaddr_in *addr);
 
 /*
  * Destroy instance of pc_connect_t
@@ -447,7 +441,7 @@ pc_connect_t* pc_connect_req_new(struct sockaddr_in *addr);
  * @param conn_req pc_connect_t instance
  * @return none
  */
-void pc_connect_req_destroy(pc_connect_t *conn_req);
+PC_EXTERN void pc_connect_req_destroy(pc_connect_t *conn_req);
 
 /**
  * Send rerquest to server.
@@ -461,7 +455,7 @@ void pc_connect_req_destroy(pc_connect_t *conn_req);
  * @param  cb     request callback
  * @return        0 or -1
  */
-int pc_request(pc_client_t *client, pc_request_t *req, const char *route,
+PC_EXTERN int pc_request(pc_client_t *client, pc_request_t *req, const char *route,
                json_t *msg, pc_request_cb cb);
 
 /**
@@ -469,14 +463,14 @@ int pc_request(pc_client_t *client, pc_request_t *req, const char *route,
  *
  * @return   notify instance
  */
-pc_notify_t *pc_notify_new();
+PC_EXTERN pc_notify_t *pc_notify_new();
 
 /**
  * Destroy and release inner resource of a notify instance.
  *
  * @param req notify instance to be destroied.
  */
-void pc_notify_destroy(pc_notify_t *req);
+PC_EXTERN void pc_notify_destroy(pc_notify_t *req);
 
 /**
  * Send notify to server.
@@ -490,7 +484,7 @@ void pc_notify_destroy(pc_notify_t *req);
  * @param  cb     notify callback
  * @return        0 or -1
  */
-int pc_notify(pc_client_t *client, pc_notify_t *req, const char *route,
+PC_EXTERN int pc_notify(pc_client_t *client, pc_notify_t *req, const char *route,
               json_t *msg, pc_notify_cb cb);
 
 /**
@@ -501,7 +495,7 @@ int pc_notify(pc_client_t *client, pc_notify_t *req, const char *route,
  * @param  event_cb event callback.
  * @return          0 or -1.
  */
-int pc_add_listener(pc_client_t *client, const char *event,
+PC_EXTERN int pc_add_listener(pc_client_t *client, const char *event,
                     pc_event_cb event_cb);
 
 /**
@@ -512,7 +506,7 @@ int pc_add_listener(pc_client_t *client, const char *event,
  * @param  event_cb event callback.
  * @return          void.
  */
-void pc_remove_listener(pc_client_t *client, const char *event,
+PC_EXTERN void pc_remove_listener(pc_client_t *client, const char *event,
                     pc_event_cb event_cb);
 
 /**
@@ -522,7 +516,7 @@ void pc_remove_listener(pc_client_t *client, const char *event,
  * @param event  event name.
  * @param data   attach data of the event.
  */
-void pc_emit_event(pc_client_t *client, const char *event, void *data);
+PC_EXTERN void pc_emit_event(pc_client_t *client, const char *event, void *data);
 
 /**
  * jansson memory malloc, free self-defined function.
@@ -530,7 +524,7 @@ void pc_emit_event(pc_client_t *client, const char *event, void *data);
  * @param malloc_fn malloc function.
  * @param free_fn   free function.
  */
-void pc_json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn);
+PC_EXTERN void pc_json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn);
 
 /**
  * Init protobuf settings, set the read/write proto files directorys
@@ -539,7 +533,7 @@ void pc_json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn);
  * @param proto_read_dir    directory of proto files to read.
  * @param proto_write_dir   directory of proto files to write.
  */
-void pc_proto_init(pc_client_t *client, const char *proto_read_dir, const char *proto_write_dir);
+PC_EXTERN void pc_proto_init(pc_client_t *client, const char *proto_read_dir, const char *proto_write_dir);
 
 /**
  * Init protobuf settings, set the callback for read/write proto files
@@ -547,9 +541,9 @@ void pc_proto_init(pc_client_t *client, const char *proto_read_dir, const char *
  * @param client    client instance.
  * @param proto_cb  callback when read or write proto files.
  */
-void pc_proto_init2(pc_client_t *client, pc_proto_cb proto_cb);
+PC_EXTERN void pc_proto_init2(pc_client_t *client, pc_proto_cb proto_cb);
 
-void pc_proto_copy(pc_client_t *client, json_t *proto_ver, json_t *client_protos, json_t *server_protos);
+PC_EXTERN void pc_proto_copy(pc_client_t *client, json_t *proto_ver, json_t *client_protos, json_t *server_protos);
 
 
 
