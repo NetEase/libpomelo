@@ -39,7 +39,7 @@ int pc__handshake_req(pc_client_t *client) {
   json_object_set(sys, "type", json_type);
   json_object_set(sys, "version", json_version);
 
-  json_t *proto;
+  json_t *proto, *dict;
   if(!client->proto_ver) {
     pc__load_file(client, PC_PROTO_VERSION, &proto);
     if(proto) {
@@ -49,11 +49,17 @@ int pc__handshake_req(pc_client_t *client) {
   } else {
     json_object_set(sys, PC_PROTO_VERSION, client->proto_ver);
   }
-
+    
+  pc__load_file(client, PC_DICT_VERSION, &dict);
+  if(dict) {
+    json_t* dictVersion = json_object_get(dict, PC_DICT_VERSION);
+    json_object_set(sys, PC_DICT_VERSION, dictVersion);
+  }
 
   json_decref(json_type);
   json_decref(json_version);
   json_decref(proto);
+  json_decref(dict);
 
   if(handshake_opts) {
     json_t *user = json_object_get(handshake_opts, "user");
@@ -117,6 +123,20 @@ int pc__handshake_resp(pc_client_t *client,
 
     // setup route dictionary
     json_t *dict = json_object_get(sys, "dict");
+    if(dict) {
+      json_t *dictVersion = json_object_get(dict, "version");
+      if (dictVersion){
+        //TODO: backwards compatible (old version pomelo doesn't have this)
+        json_t *t = json_object();
+        json_object_set(t, PC_DICT_VERSION, json_object_get(dict, "version"));
+        pc__dump_file(client, PC_DICT_VERSION, t);
+        json_decref(t);
+        pc__dump_file(client, PC_DICT, dict);
+      }
+    } else{
+      pc__load_file(client, PC_DICT, &dict);
+    }
+
     if(dict) {
       client->route_to_code = dict;
       json_incref(dict);

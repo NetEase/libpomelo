@@ -31,6 +31,8 @@ extern "C" {
 #define PC_PROTO_VERSION "protoVersion"
 #define PC_PROTO_CLIENT "clientProtos"
 #define PC_PROTO_SERVER "serverProtos"
+#define PC_DICT_VERSION "dictVersion"
+#define PC_DICT         "dict"
 
 typedef struct pc_client_s pc_client_t;
 typedef struct pc_listener_s pc_listener_t;
