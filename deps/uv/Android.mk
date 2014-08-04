@@ -10,9 +10,9 @@ LOCAL_SRC_FILES := \
 src/uv-common.c \
 src/fs-poll.c \
 src/inet.c \
-src/unix/linux/linux-core.c \
 src/unix/linux/inotify.c \
 src/unix/linux/syscalls.c \
+src/unix/linux-core.c \
 src/unix/error.c \
 src/unix/tcp.c \
 src/unix/pipe.c \

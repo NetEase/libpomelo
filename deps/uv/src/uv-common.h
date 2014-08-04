@@ -53,7 +53,6 @@
 # define INLINE inline
 #endif
 
-
 #ifndef _WIN32
 enum {
   UV__HANDLE_INTERNAL = 0x8000,

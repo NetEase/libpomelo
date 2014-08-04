@@ -69,6 +69,9 @@ extern "C" {
 # include "uv-private/uv-win.h"
 #endif
 
+#ifdef __ANDROID__
+  #define IOV_MAX (__INT_MAX__-1)
+#endif
 /* Expand this list if necessary. */
 #define UV_ERRNO_MAP(XX)                                                      \
   XX( -1, UNKNOWN, "unknown error")                                           \

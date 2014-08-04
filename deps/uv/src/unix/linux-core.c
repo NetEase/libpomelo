@@ -43,7 +43,9 @@
 # endif
 #endif
 #ifdef HAVE_IFADDRS_H
-# include <ifaddrs.h>
+ #ifndef __ANDROID__
+#include <ifaddrs.h>
+ #endif
 #endif
 
 #undef NANOSEC
@@ -682,6 +684,7 @@ void uv_free_cpu_info(uv_cpu_info_t* cpu_infos, int count) {
 
 uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
   int* count) {
+   #ifndef __ANDROID__
 #ifndef HAVE_IFADDRS_H
   return uv__new_artificial_error(UV_ENOSYS);
 #else
@@ -746,7 +749,7 @@ uv_err_t uv_interface_addresses(uv_interface_address_t** addresses,
   }
 
   freeifaddrs(addrs);
-
+#endif
   return uv_ok_;
 #endif
 }
