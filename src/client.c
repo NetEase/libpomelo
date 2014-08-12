@@ -4,6 +4,7 @@
 #include <string.h>
 #include <assert.h>
 #include <math.h>
+#include <time.h>
 
 #include "pomelo.h"
 #include "pomelo-private/listener.h"
@@ -62,7 +63,7 @@ pc_client_t *pc_client_new_with_reconnect(int delay, int delay_max, int exp_back
   if(!client->enable_exp_backoff){
     client->max_reconnects_incr = client->reconnect_delay_max / client->reconnect_delay + 1;
   } else {
-    client->max_reconnects_incr = (int)log(1.0 * client->reconnect_delay_max / client->reconnect_delay) / log(2) + 1;
+    client->max_reconnects_incr = (int)log(1.0 * client->reconnect_delay_max / client->reconnect_delay) / log(2.0) + 1;
   }
   /* uv_timer_init never fail */
   uv_timer_init(client->uv_loop, &client->reconnect_timer); 
@@ -347,7 +348,7 @@ void pc__client_reconnected_cb(pc_connect_t* conn_req, int status) {
 void pc__client_reconnect_timer_cb(uv_timer_t* timer, int status) {
   /* unused */
   (void)status;
-  pc_client_t* client = timer->data;
+  pc_client_t* client = (pc_client_t*)timer->data;
   pc_connect_t* conn_req = pc_connect_req_new(&client->addr);
   if (!conn_req) {
     fprintf(stderr, "out of memory");
