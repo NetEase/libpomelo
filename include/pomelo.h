@@ -345,13 +345,13 @@ PC_EXTERN pc_client_t *pc_client_new();
 /**
  * Create and init Pomelo client instance with reconnect enable
  *
- * @param delay delay time in millisecond
- * @param delay_max the max delay time 
+ * @param delay delay time in second
+ * @param delay_max the max delay time in second
  * @param exp_backoff whether enable exponetial backoff
  *
- * For example, if 2000 -> delay, 10000 -> delay_max, then the reconnect delay will be
+ * For example, if 2 -> delay, 10 -> delay_max, then the reconnect delay will be
  *   2, 4, 6, 8, 10, 10, 10 seconds...
- *   if 2000 -> delay, 30000 -> delay_max enable exponetial backoff, the reconnect delay will be 
+ *   if 2 -> delay, 30 -> delay_max enable exponetial backoff, the reconnect delay will be 
  *   2, 4, 8, 16, 30, 30 seconds...
  */
 PC_EXTERN pc_client_t *pc_client_new_with_reconnect(int delay, int delay_max, int exp_backoff);
