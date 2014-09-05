@@ -94,15 +94,12 @@
       ],
       'conditions': [
         ['OS != "win"', {
-          'ldflags': [
-            '-no-undefined',
-            '-export-symbols-regex \'^json_\'',
-            '-version-info 8:0:4',
-          ],
           'cflags': [
             '-ggdb',
           ]
-        }]    # OS != "win"
+        }],
+      ['library=="shared_library"', {
+        'defines': ['BUILDING_PC_SHARED=1'], }],  # OS != "win"
       ],    # conditions
     },
   ],    # targets
