@@ -23,7 +23,7 @@
   'targets': [
     {
       'target_name': 'jansson',
-      'type': '<(library)',
+      'type': 'static_library',
       'include_dirs': [
         './src'
       ],
