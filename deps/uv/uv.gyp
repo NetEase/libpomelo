@@ -6,6 +6,7 @@
     # as it's necessary to correctly locate the object files for post
     # processing.
     'uv_parent_path': '',
+    'uv_library%': 'static_library',
   },
 
   'conditions': [
@@ -46,7 +47,7 @@
   'targets': [
     {
       'target_name': 'libuv',
-      'type': '<(library)',
+      'type': '<(uv_library)',
       'include_dirs': [
         'include',
         'include/uv-private',
