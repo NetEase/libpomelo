@@ -237,9 +237,10 @@ pc_buf_t pc__default_msg_encode_cb(pc_client_t *client, uint32_t reqId,
   return msg_buf;
 
 error:
-  if(msg_buf.len > 0) free(msg_buf.base);
-  if(body_buf.len > 0) pc_jsonp_free(body_buf.base);
+  if(msg_buf.len != -1) free(msg_buf.base);
+  if(body_buf.len != -1) pc_jsonp_free(body_buf.base);
   msg_buf.len = -1;
+  msg_buf.base = NULL;
   return msg_buf;
 }
 

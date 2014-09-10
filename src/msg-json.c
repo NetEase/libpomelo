@@ -7,6 +7,7 @@ pc_buf_t pc__json_encode(const json_t *msg) {
   char *res = json_dumps(msg, JSON_COMPACT);
   if(res == NULL) {
     fprintf(stderr, "Fail to json encode for message.\n");
+    buf.base = NULL;
     buf.len = -1;
   } else {
     buf.base = res;
