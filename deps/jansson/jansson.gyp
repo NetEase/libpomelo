@@ -23,7 +23,7 @@
   'targets': [
     {
       'target_name': 'jansson',
-      'type': 'static_library',
+      'type': '<(library)',
       'include_dirs': [
         './src'
       ],
@@ -59,6 +59,11 @@
             'UNICODE'
           ]
         }],   # OS == "win"
+      ['OS == "win" and library == "shared_library"', {
+        'sources' : [
+          'src/jansson.def',
+        ]
+      }],
         ['OS=="ios"', {
           'xcode_settings': {
             'TARGETED_DEVICE_FAMILY': '1,2',
