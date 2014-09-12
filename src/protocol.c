@@ -179,7 +179,12 @@ void pc__default_msg_parse_done_cb(pc_client_t *client, pc_msg_t *msg) {
 
 pc_buf_t pc__default_msg_encode_cb(pc_client_t *client, uint32_t reqId,
                                    const char *route, json_t *msg) {
-  pc_buf_t msg_buf, body_buf;
+  pc_buf_t msg_buf;
+  pc_buf_t body_buf;
+
+  msg_buf.base = NULL;
+  body_buf.base = NULL;
+
   msg_buf.len = -1;
   body_buf.len = -1;
 
@@ -230,7 +235,7 @@ pc_buf_t pc__default_msg_encode_cb(pc_client_t *client, uint32_t reqId,
     }
   }
 
-  if(body_buf.len > 0) {
+  if(body_buf.len != -1) {
     pc_jsonp_free(body_buf.base);
   }
 
