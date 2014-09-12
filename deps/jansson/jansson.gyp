@@ -58,6 +58,10 @@
             '_UNICODE',
             'UNICODE'
           ]
+        }, {
+          'cflags': [
+              '-ggdb',
+          ]
         }],   # OS == "win"
       ['OS == "win" and library == "shared_library"', {
         'sources' : [
