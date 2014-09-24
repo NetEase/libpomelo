@@ -12,6 +12,7 @@ int pc__handshake_req(pc_client_t *client);
 
 // private callback functions
 static uv_buf_t pc__alloc_buffer(uv_handle_t *handle, size_t suggested_size);
+static void pc__on_tcp_read(uv_stream_t *handle, ssize_t nread, uv_buf_t buf);
 static void pc__on_tcp_connect(uv_connect_t *req, int status);
 static void pc__on_notify(uv_write_t* req, int status);
 static void pc__on_request(uv_write_t *req, int status);
