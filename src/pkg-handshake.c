@@ -284,13 +284,10 @@ static void pc__load_file(pc_client_t *client, const char *name, json_t **dest) 
   if(client->proto_event_cb) {
     client->proto_event_cb(client, PC_PROTO_OP_READ, name, (void*)dest);
   } else if(client->proto_read_dir) {
-    int offset = 0;
-    char path[100] = {0};
-    memcpy(path, client->proto_read_dir, 0);
-    offset += strlen(client->proto_read_dir);
-    memcpy(path, "/", offset);
-    offset += 1;
-    memcpy(path, name, offset);
+    char *path = malloc(strlen(client->proto_read_dir) + 1 + strlen(name) + 1);
+    strcpy(path, client->proto_read_dir);
+    strcat(path, "/"); 
+    strcat(path, name);
     *dest = json_load_file(path, 0, &err);
   } else {
     *dest = json_load_file(name, 0, &err);
@@ -301,13 +298,10 @@ static void pc__dump_file(pc_client_t *client, const char *name, json_t *src) {
   if(client->proto_event_cb) {
     client->proto_event_cb(client, PC_PROTO_OP_WRITE, name, (void*)src);
   } else if(client->proto_write_dir) {
-    int offset = 0;
-    char path[100] = {0};
-    memcpy(path, client->proto_read_dir, 0);
-    offset += strlen(client->proto_read_dir);
-    memcpy(path, "/", offset);
-    offset += 1;
-    memcpy(path, name, offset);
+    char *path = malloc(strlen(client->proto_read_dir) + 1 + strlen(name) + 1);
+    strcpy(path, client->proto_read_dir);
+    strcat(path, "/");
+    strcat(path, name);
     json_dump_file(src, path, 0);
   } else {
     json_dump_file(src, name, 0);
