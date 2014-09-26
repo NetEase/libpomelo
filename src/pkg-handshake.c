@@ -289,6 +289,8 @@ static void pc__load_file(pc_client_t *client, const char *name, json_t **dest) 
     strcat(path, "/"); 
     strcat(path, name);
     *dest = json_load_file(path, 0, &err);
+    free(path);
+    path = NULL;
   } else {
     *dest = json_load_file(name, 0, &err);
   }
@@ -303,6 +305,8 @@ static void pc__dump_file(pc_client_t *client, const char *name, json_t *src) {
     strcat(path, "/");
     strcat(path, name);
     json_dump_file(src, path, 0);
+    free(path);
+    path = NULL;
   } else {
     json_dump_file(src, name, 0);
   }
