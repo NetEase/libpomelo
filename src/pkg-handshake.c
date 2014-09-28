@@ -284,7 +284,7 @@ static void pc__load_file(pc_client_t *client, const char *name, json_t **dest) 
   if(client->proto_event_cb) {
     client->proto_event_cb(client, PC_PROTO_OP_READ, name, (void*)dest);
   } else if(client->proto_read_dir) {
-    char *path = malloc(strlen(client->proto_read_dir) + 1 + strlen(name) + 1);
+    char *path = (char*)malloc(strlen(client->proto_read_dir) + 1 + strlen(name) + 1);
     strcpy(path, client->proto_read_dir);
     strcat(path, "/"); 
     strcat(path, name);
@@ -300,7 +300,7 @@ static void pc__dump_file(pc_client_t *client, const char *name, json_t *src) {
   if(client->proto_event_cb) {
     client->proto_event_cb(client, PC_PROTO_OP_WRITE, name, (void*)src);
   } else if(client->proto_write_dir) {
-    char *path = malloc(strlen(client->proto_read_dir) + 1 + strlen(name) + 1);
+    char *path = (char*)malloc(strlen(client->proto_read_dir) + 1 + strlen(name) + 1);
     strcpy(path, client->proto_read_dir);
     strcat(path, "/");
     strcat(path, name);
