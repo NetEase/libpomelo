@@ -449,6 +449,44 @@ int pc_client_connect2(pc_client_t *client, pc_connect_t *conn_req, pc_connect_c
   return 0;
 }
 
+static void pc__client_connect3_cb(pc_connect_t* req, int status) {
+  if(status == -1) {
+    pc_client_stop(req->client);
+    pc_connect_req_destroy(req);
+    return;
+  }
+
+  pc_emit_event(req->client, PC_EVENT_RECONNECT, req->client);
+  pc_connect_req_destroy(req);
+}
+
+int pc_client_connect3(pc_client_t *client, struct sockaddr_in *addr) {
+  pc_connect_t *conn_req = pc_connect_req_new(addr);
+
+  if(client->enable_reconnect){
+    memcpy(&client->addr, addr, sizeof(struct sockaddr_in));
+  }
+
+  if(conn_req == NULL) {
+    fprintf(stderr, "Fail to malloc pc_connect_t.\n");
+    goto error;
+  }
+
+  if(pc_connect(client, conn_req, NULL, pc__client_connect3_cb)) {
+    fprintf(stderr, "Fail to connect to server.\n");
+    goto error;
+  }
+
+  uv_thread_create(&client->worker, pc__worker, client);
+
+  return 0;
+
+error:
+  if(conn_req) pc_connect_req_destroy(conn_req);
+  return -1;
+}
+
+
 int pc_add_listener(pc_client_t *client, const char *event,
                     pc_event_cb event_cb) {
   if(PC_ST_CLOSED == client->state) {

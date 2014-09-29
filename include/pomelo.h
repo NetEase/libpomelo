@@ -427,6 +427,16 @@ PC_EXTERN  int pc_client_connect2(pc_client_t *client, pc_connect_t *conn_req, p
 
 
 /*
+ * connect asynchronously, when success to connect,
+ * it will emit the event reconnect
+ *
+ * @param client client instance
+ * @param  addr   server address.
+ * @return 0 or -1
+ */
+PC_EXTERN  int pc_client_connect3(pc_client_t *client, struct sockaddr_in* addr);
+
+/*
  *
  * Use for async connection
  * 
