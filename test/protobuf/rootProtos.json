@@ -10,10 +10,16 @@
       "type": "double",
       "tag": 2
     },
+    "msgs": {
+      "option": "repeated",
+      "type": "string",
+      "tag": 3
+    },
     "__messages": {},
     "__tags": {
       "1": "x",
-      "2": "y"
+      "2": "y",
+      "3": "msgs"
     }
   },
   "message Map": {
