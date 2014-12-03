@@ -160,6 +160,10 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, const json_t *gprot
     json_t *type, *_messages, *sub_msg, *sub_value;
     const char *type_text;
 
+#ifdef PB_DEBUG
+    char* debug_log = NULL;
+#endif
+
     type = json_object_get(proto, "type");
     type_text = json_string_value(type);
 
@@ -171,7 +175,10 @@ static int checkreturn pb_decode_proto(pb_istream_t *stream, const json_t *gprot
     char *str_value;
 
 #ifdef PB_DEBUG
-    printf("[PB_DEBUG:] %s\n", json_dumps(result, JSON_ENCODE_ANY));
+    debug_log = json_dumps(result, JSON_ENCODE_ANY);
+    fprintf(stderr, "result %s\n", debug_log);
+    jsonp_free(debug_log);
+    debug_log = NULL;
 #endif
 
     _messages = json_object_get(protos, "__messages");
@@ -281,6 +288,11 @@ static int checkreturn pb_decode_array(pb_istream_t *stream, const json_t *gprot
     uint32_t size;
     int i;
     int need_decref = 0;
+
+#ifdef PB_DEBUG
+    char* debug_log = NULL;
+#endif
+
     type = json_object_get(proto, "type");
     type_text = json_string_value(type);
     if (!result) {
@@ -290,8 +302,12 @@ static int checkreturn pb_decode_array(pb_istream_t *stream, const json_t *gprot
     array = json_object_get(result, key);
 
 #ifdef PB_DEBUG
-    fprintf(stderr, "%s\n", json_dumps(proto, JSON_ENCODE_ANY));
+    debug_log = json_dumps(proto, JSON_ENCODE_ANY);
+    fprintf(stderr, "proto %s\n", debug_log);
+    jsonp_free(debug_log);
+    debug_log = NULL;
 #endif
+
     if (!array) {
         array = json_array();
         need_decref = 1;
@@ -329,7 +345,10 @@ static int checkreturn pb_decode_array(pb_istream_t *stream, const json_t *gprot
     }
 
 #ifdef PB_DEBUG
-    printf("[PB_DEBUG:] decode array %s\n", json_dumps(array, 0));
+    debug_log = json_dumps(array, JSON_ENCODE_ANY);
+    fprintf(stderr, "array %s\n", debug_log);
+    jsonp_free(debug_log);
+    debug_log = NULL;
 #endif
 
     json_object_set(result, key, array);
