@@ -267,7 +267,6 @@ void pc_client_stop(pc_client_t *client) {
       return;
     }
 
-    pc_emit_event(client, PC_EVENT_DISCONNECT, NULL);
     pc__client_reconnect(client);
     return;
   }
