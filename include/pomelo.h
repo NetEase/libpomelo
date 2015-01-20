@@ -289,6 +289,9 @@ struct pc_client_s {
   int reconnect_delay_max;
   int enable_exp_backoff;
   struct sockaddr_in addr;
+
+  char* host;
+  int port;
 };
 
 /**
@@ -435,6 +438,15 @@ PC_EXTERN  int pc_client_connect2(pc_client_t *client, pc_connect_t *conn_req, p
  * @return 0 or -1
  */
 PC_EXTERN  int pc_client_connect3(pc_client_t *client, struct sockaddr_in* addr);
+
+/**
+ * same as pc_client_connect3, but use (host:port)
+ *
+ * @param client client instance
+ * @param addr server address
+ * @return 0 or -1
+ */
+PC_EXTERN  int pc_client_connect4(pc_client_t *client, const char* host, int port);
 
 /*
  *

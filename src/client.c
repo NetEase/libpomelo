@@ -23,6 +23,42 @@ static void pc__client_reconnect_reset(pc_client_t *client);
 static void pc__client_reconnect_timer_cb(uv_timer_t* timer, int status);
 static void pc__client_reconnect(pc_client_t *client);
 
+static int pc_client_dns_resolve(const char* host, int port, struct sockaddr_in *addr) {
+  struct addrinfo hints;
+  struct addrinfo* ainfo;
+  struct addrinfo* rp;
+  int ret;
+  int flag = 0;
+
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_INET;
+  hints.ai_flags = AI_ADDRCONFIG;
+  hints.ai_socktype = SOCK_STREAM;
+
+  ret = getaddrinfo(host, NULL, &hints, &ainfo);
+
+  if (ret) {
+    return -1;
+  }
+
+  for (rp = ainfo; rp; rp = rp->ai_next) {
+    if (rp->ai_family == AF_INET) {
+      flag = 1;
+      memcpy(addr, rp->ai_addr, sizeof(struct sockaddr_in));
+      addr->sin_port = htons(port);
+      break;
+    }
+  }
+
+  freeaddrinfo(ainfo);
+
+  if (!flag) {
+    return -1;
+  }
+
+  return 0;
+}
+
 pc_client_t *pc_client_new() {
   pc_client_t *client = (pc_client_t *)malloc(sizeof(pc_client_t));
 
@@ -144,6 +180,8 @@ void pc__client_init(pc_client_t *client) {
   client->encode_msg_done = pc__default_msg_encode_done_cb;
 
   client->state = PC_ST_INITED;
+  client->host = NULL;
+  client->port = -1;
 }
 
 /**
@@ -201,6 +239,10 @@ void pc__client_clear(pc_client_t *client) {
   if(client->proto_ver) {
     json_decref(client->proto_ver);
     client->proto_ver = NULL;
+  }
+  if(client->host) {
+    free(client->host);
+    client->host = NULL;
   }
 }
 
@@ -348,11 +390,22 @@ void pc__client_reconnected_cb(pc_connect_t* conn_req, int status) {
 void pc__client_reconnect_timer_cb(uv_timer_t* timer, int status) {
   /* unused */
   (void)status;
+
   pc_client_t* client = (pc_client_t*)timer->data;
+  if (client->host) {
+    if (pc_client_dns_resolve(client->host, client->port, &client->addr)) {
+      fprintf(stderr, "dns resolve error, host: %s\n", client->host);
+      pc_client_stop(client);
+
+      return ;
+    }
+  }
+
   pc_connect_t* conn_req = pc_connect_req_new(&client->addr);
   if (!conn_req) {
     fprintf(stderr, "out of memory");
     pc_client_stop(client);
+    return ;
   }
 
   if(pc_connect(client, conn_req, NULL, pc__client_reconnected_cb)) {
@@ -486,6 +539,23 @@ error:
   return -1;
 }
 
+
+
+int pc_client_connect4(pc_client_t* client, const char *host, int port) {
+  int ret;
+
+  struct sockaddr_in addr;
+  ret = pc_client_dns_resolve(host, port, &addr);
+  if (ret) {
+    fprintf(stderr, "dns resolve error, host: %s\n", host);
+    return ret;
+  }
+
+  client->host = strdup(host);
+  client->port = port;
+
+  return pc_client_connect3(client, &addr);
+}
 
 int pc_add_listener(pc_client_t *client, const char *event,
                     pc_event_cb event_cb) {
