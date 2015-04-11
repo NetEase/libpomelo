@@ -13,6 +13,16 @@ static void pc__handshake_ack_cb(uv_write_t* req, int status);
 static void pc__load_file(pc_client_t *client, const char *name, json_t **dest);
 static void pc__dump_file(pc_client_t *client, const char *name, json_t *src);
 
+static void pc__handshake_timeout_cb(uv_timer_t* handshake_timer, int status) {
+  uv_timer_stop(handshake_timer);
+  pc_client_t* client = handshake_timer->data;
+  pc_emit_event(client, PC_EVENT_TIMEOUT, NULL);
+  fprintf(stderr, "Pomelo client handshake timeout.\n");
+  pc_client_stop(client);
+}
+
+#define HANDSHAKE_TIMEOUT (10 * 1000) // 10 seconds
+
 int pc__handshake_req(pc_client_t *client) {
   json_t *handshake_opts = client->handshake_opts;
   json_t *body = json_object();
@@ -78,6 +88,8 @@ int pc__handshake_req(pc_client_t *client) {
   pc_jsonp_free((void *)data);
   json_decref(body);
 
+  uv_timer_start(client->handshake_timer, pc__handshake_timeout_cb, HANDSHAKE_TIMEOUT, 0);
+
   return 0;
 error:
   if(data) pc_jsonp_free((void *)data);
@@ -89,6 +101,8 @@ int pc__handshake_resp(pc_client_t *client,
                        const char *data, size_t len) {
   json_error_t error;
   json_t *res = json_loadb(data, len, 0, &error);
+
+  uv_timer_stop(client->handshake_timer);
 
   if(res == NULL) {
     fprintf(stderr, "Fail to parse handshake package. %s\n", error.text);

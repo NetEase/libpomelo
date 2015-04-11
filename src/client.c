@@ -163,6 +163,13 @@ void pc__client_init(pc_client_t *client) {
   client->timeout_timer->data = client;
   client->timeout = 0;
 
+  client->handshake_timer = (uv_timer_t*)malloc(sizeof(uv_timer_t));
+  if(uv_timer_init(client->uv_loop, client->handshake_timer)) {
+    fprintf(stderr, "Fail to init client->timeout_timer.\n");
+    abort();
+  }
+  client->handshake_timer->data = client;
+
   client->close_async = (uv_async_t *)malloc(sizeof(uv_async_t));
   uv_async_init(client->uv_loop, client->close_async, pc__close_async_cb);
   client->close_async->data = client;
@@ -262,6 +269,10 @@ void pc__client_reconnect_reset(pc_client_t *client) {
     uv_timer_stop(client->timeout_timer);
     client->timeout = 0;
   } 
+
+  if(client->handshake_timer != NULL) {
+      uv_timer_stop(client->timeout_timer);
+  }
   
   if(client->requests) {
     pc_map_clear(client->requests);
@@ -340,6 +351,10 @@ void pc_client_stop(pc_client_t *client) {
     uv_close((uv_handle_t *)client->timeout_timer, pc__handle_close_cb);
     client->timeout_timer = NULL;
     client->timeout = 0;
+  }
+  if(client->handshake_timer != NULL) {
+    uv_close((uv_handle_t*)client->handshake_timer, pc__handle_close_cb);
+    client->handshake_timer = NULL;
   }
   if(client->close_async != NULL) {
     uv_close((uv_handle_t *)client->close_async, pc__handle_close_cb);
