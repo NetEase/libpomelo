@@ -1,3 +1,9 @@
+0.3.0
+==========
+- support handshake timeout
+- enable tcp keepalive
+- start sending heartbeat after connected
+
 0.2.1
 ==========
 - add dns resolve support
