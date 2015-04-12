@@ -414,6 +414,21 @@ static void pc__on_tcp_connect(uv_connect_t *req, int status) {
     goto error;
   }
 
+#if defined(__linux__)
+  {
+    int fd;
+    int keepalive = 1;
+    int idle = 60;
+
+    // hacking uv to get fd from uv_tcp_t.
+    fd = transport->socket->io_watcher.fd;
+
+    // ignore the errors
+    setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &keepalive, sizeof(keepalive));
+    setsockopt(fd, SOL_TCP, TCP_KEEPIDLE, &idle, sizeof(idle));
+  }
+#endif
+
   client->state = PC_ST_CONNECTED;
   pc_transport_start(transport);
 
