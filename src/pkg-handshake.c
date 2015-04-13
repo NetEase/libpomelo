@@ -208,6 +208,8 @@ int pc__handshake_resp(pc_client_t *client,
     pc__handshake_ack(client);
   }
 
+  pc__heartbeat(client);
+
   return 0;
 
 error:
