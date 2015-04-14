@@ -21,7 +21,7 @@ extern "C" {
 #include "pomelo-private/map.h"
 
 #define PC_TYPE "c"
-#define PC_VERSION "0.3.0"
+#define PC_VERSION "0.3.1"
 
 #define PC_EVENT_DISCONNECT "disconnect"
 #define PC_EVENT_TIMEOUT "timeout"

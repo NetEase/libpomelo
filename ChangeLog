@@ -1,3 +1,7 @@
+0.3.1
+==========
+- fix a compilation bug
+
 0.3.0
 ==========
 - support handshake timeout
