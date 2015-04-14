@@ -2,6 +2,7 @@
 #include "pomelo.h"
 #include "pomelo-protocol/package.h"
 #include "pomelo-private/jansson-memory.h"
+#include "pomelo-private/internal.h"
 
 extern int pc__binary_write(pc_client_t *client, const char *data, size_t len,
                      uv_write_cb cb);
