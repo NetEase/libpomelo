@@ -410,25 +410,27 @@ void pc__client_reconnect_timer_cb(uv_timer_t* timer, int status) {
   if (client->host) {
     if (pc_client_dns_resolve(client->host, client->port, &client->addr)) {
       fprintf(stderr, "dns resolve error, host: %s\n", client->host);
-      pc_client_stop(client);
-
-      return ;
+      goto fail;
     }
   }
 
   pc_connect_t* conn_req = pc_connect_req_new(&client->addr);
   if (!conn_req) {
     fprintf(stderr, "out of memory");
-    pc_client_stop(client);
-    return ;
+    goto fail;
   }
 
-  if(pc_connect(client, conn_req, NULL, pc__client_reconnected_cb)) {
+  if (pc_connect(client, conn_req, NULL, pc__client_reconnected_cb)) {
     fprintf(stderr, "Fail to connect to server.\n");
     pc_connect_req_destroy(conn_req);
-    client->reconnecting = 0;
-    pc_client_stop(client);
+    goto fail;
   }
+
+  return;
+
+fail:
+  client->reconnecting = 0;
+  pc_client_stop(client);
 }
 
 void pc_client_destroy(pc_client_t *client) {
