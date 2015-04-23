@@ -22,7 +22,7 @@ extern "C" {
 #include "time.h"
 
 #define PC_TYPE "c"
-#define PC_VERSION "0.3.1"
+#define PC_VERSION "0.3.2"
 
 #define PC_EVENT_DISCONNECT "disconnect"
 #define PC_EVENT_TIMEOUT "timeout"

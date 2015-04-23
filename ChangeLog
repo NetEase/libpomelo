@@ -1,3 +1,8 @@
+0.3.2
+==========
+- bugfix for dns resolving error
+- add watchdog support
+
 0.3.1
 ==========
 - fix a compilation bug
