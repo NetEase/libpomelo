@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "pomelo.h"
 #include "pomelo-private/transport.h"
 #include "pomelo-protocol/package.h"
 
@@ -81,6 +82,7 @@ void pc_client_on_tcp_read(pc_client_t *client, const char *data, size_t len) {
  */
 void pc_tp_on_tcp_read(uv_stream_t *socket, ssize_t nread, uv_buf_t buf) {
   pc_transport_t *transport = (pc_transport_t *)socket->data;
+  pc_last_update_time = time(NULL);
   if(PC_TP_ST_WORKING != transport->state) {
     fprintf(stderr, "Discard read data for transport has stop work: %d\n",
             transport->state);

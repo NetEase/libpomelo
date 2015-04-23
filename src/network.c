@@ -84,6 +84,8 @@ int pc_connect(pc_client_t *client, pc_connect_t *req,
     return -1;
   }
 
+  pc_last_update_time = time(NULL);
+
   client->state = PC_ST_CONNECTING;
 
   uv_connect_t *connect_req = NULL;
@@ -227,6 +229,8 @@ static void pc__request(pc_request_t *req, int status) {
   uv_write_t * write_req = NULL;
   void **data = NULL;
 
+  pc_last_update_time = time(NULL);
+
   memset(&msg_buf, 0, sizeof(pc_buf_t));
   memset(&pkg_buf, 0, sizeof(pc_buf_t));
 
@@ -297,6 +301,8 @@ static void pc__notify(pc_notify_t *req, int status) {
     req->cb(req, status);
     return;
   }
+
+  pc_last_update_time = time(NULL);
 
   pc_transport_t *transport = req->transport;
 
@@ -388,6 +394,8 @@ static void pc__on_tcp_connect(uv_connect_t *req, int status) {
 
   free(req);
   free(data);
+
+  pc_last_update_time = time(NULL);
 
   if(PC_ST_CONNECTING != client->state) {
     fprintf(stderr, "Invalid client state when tcp connected: %d.\n",
@@ -539,6 +547,7 @@ static void pc__on_request(uv_write_t *req, int status) {
   pc_client_t *client = transport->client;
   char *base = (char *)data[1];
 
+  pc_last_update_time = time(NULL);
   free(base);
   free(req);
   free(data);
@@ -573,6 +582,8 @@ static void pc__on_notify(uv_write_t *req, int status) {
   pc_transport_t *transport = notify_req->transport;
   pc_client_t *client = transport->client;
   char *base = (char *)data[1];
+
+  pc_last_update_time = time(NULL);
 
   free(base);
   free(req);

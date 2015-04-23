@@ -17,6 +17,7 @@ int pc__heartbeat(pc_client_t *client) {
 }
 
 int pc__heartbeat_req(pc_client_t *client) {
+  pc_last_update_time = time(NULL);
   if(PC_ST_WORKING != client->state) {
     return -1;
   }
@@ -74,6 +75,8 @@ static void pc__heartbeat_req_cb(uv_write_t* req, int status) {
   void **data = (void **)req->data;
   pc_client_t *client = (pc_client_t *)data[0];
   char *base = (char *)data[1];
+
+  pc_last_update_time = time(NULL);
 
   free(base);
   free(data);

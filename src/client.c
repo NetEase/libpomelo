@@ -15,6 +15,8 @@
 #include "pomelo-private/common.h"
 #include "pomelo-private/ngx-queue.h"
 
+volatile time_t pc_last_update_time;
+
 static void pc__client_init(pc_client_t *client);
 static void pc__close_async_cb(uv_async_t *handle, int status);
 static void pc__release_listeners(pc_map_t *map, const char* key, void *value);

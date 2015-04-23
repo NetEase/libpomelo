@@ -19,6 +19,7 @@ extern "C" {
 #include "uv.h"
 #include "jansson.h"
 #include "pomelo-private/map.h"
+#include "time.h"
 
 #define PC_TYPE "c"
 #define PC_VERSION "0.3.1"
@@ -568,6 +569,7 @@ PC_EXTERN void pc_proto_init2(pc_client_t *client, pc_proto_cb proto_cb);
 
 PC_EXTERN void pc_proto_copy(pc_client_t *client, json_t *proto_ver, json_t *client_protos, json_t *server_protos);
 
+PC_EXTERN extern volatile time_t pc_last_update_time;
 
 
 /* Don't export the private CPP symbols. */
