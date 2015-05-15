@@ -11,10 +11,7 @@ static json_free_t do_free = free;
 
 void *pc_jsonp_malloc(size_t size)
 {
-    if(!size)
-        return NULL;
-
-    return (*do_malloc)(size);
+    return do_malloc(size);
 }
 
 void pc_jsonp_free(void *ptr)
@@ -22,7 +19,7 @@ void pc_jsonp_free(void *ptr)
     if(!ptr)
         return;
 
-    (*do_free)(ptr);
+    do_free(ptr);
 }
 
 void pc_json_set_alloc_funcs(json_malloc_t malloc_fn, json_free_t free_fn)
