@@ -1,3 +1,8 @@
+0.3.3
+==========
+- remove unused code that leads memory corruption
+- add assertion for json 
+
 0.3.2
 ==========
 - bugfix for dns resolving error
