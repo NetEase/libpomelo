@@ -485,6 +485,8 @@ static int pc__async_write(pc_transport_t *transport, pc_tcp_req_t *req,
   req->route = cpy_route;
   req->msg = msg;
 
+  assert(IS_VALID_JSON(msg));
+
   async_req = (uv_async_t *)malloc(sizeof(uv_async_t));
   if(async_req == NULL) {
     fprintf(stderr, "Fail to malloc for async notify.\n");
@@ -525,6 +527,8 @@ error:
 static void pc__async_write_cb(uv_async_t* req, int status) {
   pc_tcp_req_t *tcp_req = (pc_tcp_req_t *)req->data;
   uv_close((uv_handle_t *)req, pc__handle_close_cb);
+  assert(IS_VALID_JSON(tcp_req->msg)
+          && "Sorry to say an unrepairable bug of libpomelo has been triggered");
   if(tcp_req->type == PC_NOTIFY) {
     pc__notify((pc_notify_t *)tcp_req, status);
   } else if(tcp_req->type == PC_REQUEST) {
