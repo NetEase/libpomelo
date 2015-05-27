@@ -1,3 +1,7 @@
+0.3.4
+==========
+- null check for `transport` within `write_async`
+
 0.3.3
 ==========
 - remove unused code that leads memory corruption
