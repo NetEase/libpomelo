@@ -455,6 +455,11 @@ error:
 // Async write for pc_notify or pc_request may be invoked in other threads.
 static int pc__async_write(pc_transport_t *transport, pc_tcp_req_t *req,
                            const char *route, json_t *msg) {
+  if (!transport) {
+    fprintf(stderr, "Fail to async write for transport not initializing.\n");
+    return -1;
+  }
+
   if(PC_TP_ST_WORKING != transport->state) {
     fprintf(stderr, "Fail to asyn write for transport not working: %d.\n",
             transport->state);
