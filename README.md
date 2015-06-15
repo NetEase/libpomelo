@@ -1,3 +1,5 @@
+### This project is deprecated, please go to [https://github.com/NetEase/libpomelo2](https://github.com/NetEase/libpomelo2)
+
 ##libpomelo
 
 libpomelo is a C language client SDK for Pomelo, supporting the Pomelo
