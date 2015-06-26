@@ -1,4 +1,4 @@
-### This project is deprecated, please go to [https://github.com/NetEase/libpomelo2](https://github.com/NetEase/libpomelo2)
+# This project is deprecated, please go to [https://github.com/NetEase/libpomelo2](https://github.com/NetEase/libpomelo2)
 
 ##libpomelo
 
