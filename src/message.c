@@ -8,12 +8,12 @@
 
 static uint8_t pc__msg_id_length(uint32_t id);
 
-static inline size_t pc__msg_encode_flag(pc_msg_type type, int compressRoute,
+static size_t pc__msg_encode_flag(pc_msg_type type, int compressRoute,
                                          char *base, size_t offset);
 
-static inline size_t pc__msg_encode_id(uint32_t id, char *base, size_t offset);
+static size_t pc__msg_encode_id(uint32_t id, char *base, size_t offset);
 
-static inline size_t pc__msg_encode_route(const char *route, uint16_t route_len,
+static size_t pc__msg_encode_route(const char *route, uint16_t route_len,
                                           char *base, size_t offset);
 
 pc_buf_t pc_msg_encode_route(uint32_t id, pc_msg_type type,
@@ -202,13 +202,13 @@ error:
   return NULL;
 }
 
-static inline size_t pc__msg_encode_flag(pc_msg_type type, int compressRoute,
+static size_t pc__msg_encode_flag(pc_msg_type type, int compressRoute,
                                   char *base, size_t offset) {
   base[offset++] = (type << 1) | (compressRoute ? 1 : 0);
   return offset;
 }
 
-static inline size_t pc__msg_encode_id(uint32_t id, char *base, size_t offset) {
+static size_t pc__msg_encode_id(uint32_t id, char *base, size_t offset) {
   do{
       uint32_t tmp = id % 128;
       uint32_t next = id / 128;
@@ -223,7 +223,7 @@ static inline size_t pc__msg_encode_id(uint32_t id, char *base, size_t offset) {
   return offset;
 }
 
-static inline size_t pc__msg_encode_route(const char *route, uint16_t route_len,
+static size_t pc__msg_encode_route(const char *route, uint16_t route_len,
                                    char *base, size_t offset) {
   base[offset++] = route_len & 0xff;
 
